@@ -4,28 +4,34 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// SECOND_IN_MILLISECONDS defines the number of seconds on a milliseconds. Used
+// to transform metrics that express a duration in milliseconds.
+const SECOND_IN_MILLISECONDS = 1.0 / 1000.0
+
 // DiskStatsCollector implements the prometheus Collector interface
+// Its sole responsability is gathering metrics on PVCs
 type DiskStatsCollector struct {
-	// TODO add logger
+	log logr.Logger
 
 	// info metrics of all the scraped PVCs
 	infoDesc Metric
-	// all other metrics we gather from diskstats
+	// all PVC metrics we gather from diskstats
 	// usefull as a standalone variable to iterate over and index match with diskstats's content
-	// order must match the columns in the diskstats file
+	// order MUST match the columns in the diskstats file
 	descs []Metric
 }
 
-func NewDiskStatsCollector() DiskStatsCollector {
+func NewDiskStatsCollector(log logr.Logger) DiskStatsCollector {
 	return DiskStatsCollector{
+		log: log,
 		infoDesc: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
-				"Info of Ondat volumes and matching devices.",
-				[]string{"device", "pvc", "major", "minor"},
-				nil,
+				"Info of Ondat volumes and devices.",
+				[]string{"device", "pvc", "major", "minor"}, nil,
 			),
 			valueType: prometheus.GaugeValue,
 		},
@@ -169,92 +175,113 @@ func (c DiskStatsCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeSuccessDesc
 }
 
+// Collect gathers all the metrics and reports back on both the process itself
+// but also everything that has been gathered successfully.
+// Can be called multiple times asynchronously from the registry.
 func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	timer := time.Now()
+	timeStart := time.Now()
 
 	if err := ValidateDir(STOS_VOLUMES_PATH); err != nil {
-		// TODO handle error
-		// can return early
+		c.log.Error(err, "error validating Ondat volumes directory")
+		ReportScrapeResult(c.log, ch, timeStart, false)
+		return
 	}
 
 	volumes, err := GetOndatVolumes()
 	if err != nil {
-		fmt.Printf("err: %s\n", err.Error())
-		// can return early
+		c.log.Error(err, "error getting Ondat volumes")
+		ReportScrapeResult(c.log, ch, timeStart, false)
+		return
+	}
+
+	if len(volumes) == 0 {
+		// TODO confirm this behaviour is desired
+		c.log.Info("no Ondat volumes")
+		ReportScrapeResult(c.log, ch, timeStart, true)
+		return
 	}
 
 	diskstats, err := ProcDiskstats()
 	if err != nil {
-		fmt.Printf("err: %s\n", err.Error())
+		c.log.Error(err, "error reading diskstats")
+		ReportScrapeResult(c.log, ch, timeStart, false)
+		return
 	}
 
 	for _, vol := range volumes {
-		// populate vol obj with what we want from the CP state files on this node
-		err = GetOndatVolumeMount(vol)
+		err = GetOndatVolumeState(vol)
 		if err != nil {
-			fmt.Printf("err: %s\n", err.Error())
+			c.log.Error(err, "error reading volume %s state file: %w", vol.ID, err)
 			continue
 		}
 
 		for _, stats := range diskstats {
-			// match Ondat volume with diskstat row's Major and Minor numbers
+			// match with Ondat volume through diskstat row's Major and Minor numbers
 			if vol.Major != int(stats.MajorNumber) || vol.Minor != int(stats.MinorNumber) {
 				continue
 			}
 			vol.metrics = stats
 
-			ch <- NewConstMetric(c.infoDesc.desc, c.infoDesc.valueType, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
+			ch <- NewConstMetric(c.log, c.infoDesc.desc, c.infoDesc.valueType, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
 
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
 			if err != nil {
-				fmt.Printf("err: %s\n", err.Error())
+				c.log.Error(err, "error reading device logical block size, falling back to default")
+				// continue with default sector size
 			} else {
 				diskSectorSize = float64(logicalBlockSize)
-				fmt.Printf("changing disck sector size to %f\n", diskSectorSize)
 			}
 
-			statCount := stats.IoStatsCount - 3 // Total diskstats record count, less MajorNumber, MinorNumber and DeviceName
+			// total diskstats record count, less the MajorNumber, MinorNumber and DeviceName
+			statCount := stats.IoStatsCount - 3
 
 			for i, val := range []float64{
 				float64(stats.ReadIOs),
 				float64(stats.ReadMerges),
 				float64(stats.ReadSectors) * diskSectorSize,
-				float64(stats.ReadTicks) * SECONDS_PER_TICK,
+				float64(stats.ReadTicks) * SECOND_IN_MILLISECONDS,
 				float64(stats.WriteIOs),
 				float64(stats.WriteMerges),
 				float64(stats.WriteSectors) * diskSectorSize,
-				float64(stats.WriteTicks) * SECONDS_PER_TICK,
+				float64(stats.WriteTicks) * SECOND_IN_MILLISECONDS,
 				float64(stats.IOsInProgress),
-				float64(stats.IOsTotalTicks) * SECONDS_PER_TICK,
-				float64(stats.WeightedIOTicks) * SECONDS_PER_TICK,
+				float64(stats.IOsTotalTicks) * SECOND_IN_MILLISECONDS,
+				float64(stats.WeightedIOTicks) * SECOND_IN_MILLISECONDS,
 				float64(stats.DiscardIOs),
 				float64(stats.DiscardMerges),
 				float64(stats.DiscardSectors),
-				float64(stats.DiscardTicks) * SECONDS_PER_TICK,
+				float64(stats.DiscardTicks) * SECOND_IN_MILLISECONDS,
 				float64(stats.FlushRequestsCompleted),
-				float64(stats.TimeSpentFlushing) * SECONDS_PER_TICK,
+				float64(stats.TimeSpentFlushing) * SECOND_IN_MILLISECONDS,
 			} {
 				if i >= statCount {
+					// didn't read all the above fields from diskstats
+					// kernel version lower than 5.5
 					break
 				}
 
-				ch <- NewConstMetric(c.descs[i].desc, c.descs[i].valueType, val, vol.PVC)
+				ch <- NewConstMetric(c.log, c.descs[i].desc, c.descs[i].valueType, val, vol.PVC)
 			}
 		}
 	}
-
-	// if success/failure and duration of the scrape
-	ch <- NewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, time.Since(timer).Seconds(), "diskstats")
-	// TODO push "0" on any failures?
-	ch <- NewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, 1, "diskstats")
+	ReportScrapeResult(c.log, ch, timeStart, true)
 }
 
-func NewConstMetric(desc *prometheus.Desc, valueType prometheus.ValueType, value float64, labels ...string) prometheus.Metric {
+func ReportScrapeResult(log logr.Logger, ch chan<- prometheus.Metric, timer time.Time, success bool) {
+	ch <- NewConstMetric(log, scrapeDurationDesc, prometheus.GaugeValue, time.Since(timer).Seconds(), "diskstats")
+
+	successReturn := 1.0
+	if !success {
+		successReturn = 0
+	}
+	ch <- NewConstMetric(log, scrapeSuccessDesc, prometheus.GaugeValue, successReturn, "diskstats")
+}
+
+func NewConstMetric(log logr.Logger, desc *prometheus.Desc, valueType prometheus.ValueType, value float64, labels ...string) prometheus.Metric {
 	m, err := prometheus.NewConstMetric(desc, valueType, value, labels...)
 	if err != nil {
-		// handle error?
-		fmt.Printf("failed to create new ConstMetric. Metric desc: %s. Value: %f. Labels: %s.\n", desc.String(), value, labels[:])
+		log.Error(err, "failed creating new const metric: %w", err)
 	}
 	return m
 }

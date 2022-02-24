@@ -1,1 +1,6 @@
-# opensource-project-template
+# Metrics exporter
+
+## References
+ - [Prometheus docs](https://prometheus.io/docs/introduction/overview/)
+ - [Prometheus guidelines on writting exporters](https://prometheus.io/docs/instrumenting/writing_exporters/)
+ - [node_exporter github](https://github.com/prometheus/node_exporter)

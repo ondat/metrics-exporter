@@ -20,10 +20,10 @@ const (
 )
 
 type Labels struct {
-	PvName  string `json:"csi.storage.k8s.io/pv/name"`
-	PvcName string `json:"csi.storage.k8s.io/pvc/name"`
+	PVC string `json:"csi.storage.k8s.io/pvc/name"`
 }
 
+// VolumeJson is used to extract the information we need from the CP state files
 type VolumeJson struct {
 	Labels `json:"labels"`
 }
@@ -31,11 +31,10 @@ type VolumeJson struct {
 type Volume struct {
 	Major int
 	Minor int
-	ID    string // CP ID
-	PVC   string // K8s PVC name, friendly format (not the ID)
+	ID    string // Control Plane volume ID
+	PVC   string // K8s friendly PVC name (not the ID)
 
 	// metrics
-	// reusing prometheus struct
 	metrics blockdevice.Diskstats
 }
 
@@ -43,7 +42,7 @@ type Volume struct {
 func ValidateDir(dir string) error {
 	info, err := os.Stat(dir)
 	if err != nil {
-		return fmt.Errorf("could not read dir %q: %w", dir, err)
+		return fmt.Errorf("could not read directory %q: %w", dir, err)
 	}
 	if !info.IsDir() {
 		return fmt.Errorf("%q is not a directory", dir)
@@ -99,7 +98,7 @@ func ProcDiskstats() ([]blockdevice.Diskstats, error) {
 }
 
 func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
-	data, err := ioutil.ReadFile("/sys/block/queue/" + device + "/logical_block_size")
+	data, err := ioutil.ReadFile("/sys/block/" + device + "/queue/logical_block_size")
 	if err != nil {
 		return 0, err
 	}
@@ -107,50 +106,59 @@ func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 }
 
+// GetOndatVolumes parses the output from "ls -l" on the storageos block devices
+// directory and builds a list of all volumes found.
+// includes Major & Minor numbers and Volume ID
 func GetOndatVolumes() ([]*Volume, error) {
-	fmt.Printf("processing /var/lib/storageos/volumes\n") // we don't want this sort of message on the client's side
-
-	output, err := exec.Command("ls", "-l", "/var/lib/storageos/volumes").Output()
+	output, err := readOndatVolumes()
 	if err != nil {
-		fmt.Printf("error running ls\n")
 		return nil, err
 	}
-	out := strings.Split(string(output), "\n")
+
+	return parseOndatVolumes(output)
+}
+
+func readOndatVolumes() ([]string, error) {
+	outputRaw, err := exec.Command("ls", "-l", "/var/lib/storageos/volumes").Output()
+	if err != nil {
+		return nil, fmt.Errorf("command failed: %w", err)
+	}
+
+	return strings.Split(string(outputRaw), "\n"), nil
+}
+
+func parseOndatVolumes(input []string) ([]*Volume, error) {
 	// exclude first and last elements
 	// first line of `ls -l`` shows the total size of blocks on that
 	// dir and the ending "\n" creates an empty element on the array
-	out = out[1 : len(out)-1]
-	if len(out) == 0 {
-		return nil, fmt.Errorf("no stos volumes")
+	input = input[1 : len(input)-1]
+	if len(input) == 0 {
+		return []*Volume{}, nil
 	}
 
-	volumes := []*Volume{}
+	var (
+		// discard is used as a filler for the columns in the output from
+		// "ls -l" that we don't care about
+		discard string
+		// deviceName is in the format "v.<uuid>" where the uuid represents
+		// the volume ID in ControlPlane
+		deviceName   string
+		major, minor int
+		volumes      []*Volume
+	)
 
-	for _, line := range out {
-		// fmt.Printf("processing line: %s\n", line)
-
-		// don't care about anything other than block devices
+	for _, line := range input {
+		// only interested in block devices
 		if line[0] != 'b' {
 			continue
 		}
 
-		var (
-			// discard is used as a filler for the columns in the output of "ls -l"
-			// that we don't care about
-			discard string
-			// deviceName is in the format "v.<uuid>" where the uuid represents
-			// the volume ID in ControlPlane
-			deviceName   string
-			major, minor int
-		)
-
-		_, err = fmt.Sscanf(line,
+		_, err := fmt.Sscanf(line,
 			"%s %s %s %s %d, %d %s %s %s %s",
 			&discard, &discard, &discard, &discard, &major, &minor, &discard, &discard, &discard, &deviceName,
 		)
 		if err != nil {
-			// handle error
-			return nil, fmt.Errorf("failed to ingest ls output")
+			return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
 		}
 
 		volumes = append(volumes,
@@ -165,21 +173,37 @@ func GetOndatVolumes() ([]*Volume, error) {
 	return volumes, nil
 }
 
-// must be called after GetOndatVolumes
-func GetOndatVolumeMount(vol *Volume) error {
-	fmt.Printf("processing /var/lib/storageos/state/v.%s.json\n", vol.ID) // we don't want this sort of message on the client's side
-
-	content, err := os.ReadFile("/var/lib/storageos/state/v." + vol.ID + ".json")
+// GetOndatVolumeState parses a Control Plane volume state file and fills in all
+// the data we are missing from the volume that is not found on OS files
+func GetOndatVolumeState(vol *Volume) error {
+	content, err := readOndatVolumeState(vol.ID)
 	if err != nil {
-		return fmt.Errorf("failed to open file, err: %s", err.Error())
+		// if err is not found need to request from either the k8s api or storagoes instance on the same node
+		// TODO check the client implementation on other repos
+		return err
 	}
 
-	out := &VolumeJson{}
-	err = json.Unmarshal(content, out)
+	return parseOndatVolumeState(vol, content)
+}
+
+func readOndatVolumeState(volID string) ([]byte, error) {
+	file := fmt.Sprintf("/var/lib/storageos/state/v.%s.json", volID)
+
+	content, err := os.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal volume state file, err: %s", err.Error())
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 
-	vol.PVC = out.PvcName
+	return content, nil
+}
+
+func parseOndatVolumeState(vol *Volume, content []byte) error {
+	volumeState := &VolumeJson{}
+	err := json.Unmarshal(content, volumeState)
+	if err != nil {
+		return fmt.Errorf("failed to parse file content: %w", err)
+	}
+
+	vol.PVC = volumeState.PVC
 	return nil
 }

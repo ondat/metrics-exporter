@@ -1,0 +1,6 @@
+# More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
+# Ignore all files that are not necessary to build and run the binary
+!**/*.go
+!**/*.mod
+!**/*.sum
+!index.html

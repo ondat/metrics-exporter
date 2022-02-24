@@ -18,8 +18,10 @@ package main
 
 import (
 	"flag"
+	"html/template"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -28,7 +30,9 @@ import (
 
 func main() {
 	var (
-		address = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
+		address  = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
+		endpoint = flag.String("metrics-endpoint", "/metrics", "Endpoint for metrics.")
+		timeout  = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
 	)
 
 	opts := zap.Options{
@@ -37,18 +41,42 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger := zap.New(zap.UseFlagOptions(&opts))
+	log := zap.New(zap.UseFlagOptions(&opts))
 
 	// metrics registry, relying on Prometheus implementation to keep it simple
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewDiskStatsCollector())
+	prometheusRegistry.Register(NewDiskStatsCollector(log))
 
-	// http endpoint handler
-	http.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{})) // test/fix logger param
+	// metrics page
+	http.Handle(*endpoint, promhttp.HandlerFor(
+		prometheusRegistry,
+		promhttp.HandlerOpts{
+			// the request continues on the background but the user gets the correct response
+			Timeout:       time.Second * time.Duration(*timeout),
+			ErrorLog:      &LoggerWrapper{}, // testing
+			ErrorHandling: promhttp.ContinueOnError,
+		},
+	))
 
-	logger.Info("starting http handler", "port", address)
+	// landing page
+	// prometheus.io/docs/instrumenting/writing_exporters/#landing-page
+	var templ = template.Must(template.ParseFiles("index.html"))
+	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data := struct {
+			Title           string
+			MetricsEndpoint string
+		}{
+			Title:           "Metrics exporter",
+			MetricsEndpoint: *endpoint,
+		}
+		templ.Execute(w, &data)
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	log.Info("starting http handler", "port", address)
 	if err := http.ListenAndServe(*address, nil); err != nil {
-		logger.Error(err, "problem running http server")
+		log.Error(err, "problem running http server")
 		os.Exit(1)
 	}
 }
