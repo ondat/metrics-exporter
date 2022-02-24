@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+ name: monitor-test
+ namespace: storageos
+spec:
+ selector:
+   matchLabels:
+     app: storageos
+ template:
+   metadata:
+     labels:
+       app: storageos
+   spec:
+     containers:
+      - name: monitor-test
+        image: ricosorio/metrics-exporter:latest
+        imagePullPolicy: Always
+        volumeMounts:
+         - mountPath: /var/lib/storageos
+           name: state
+         - mountPath: /var/lib/kubelet
+           name: kubelet-dir
+     volumes:
+     - hostPath:
+         path: /var/lib/storageos
+       name: state
+     - hostPath:
+         path: /var/lib/kubelet
+         type: Directory
+       name: kubelet-dir
