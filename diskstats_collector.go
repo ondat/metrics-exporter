@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -15,7 +16,8 @@ const SECOND_IN_MILLISECONDS = 1.0 / 1000.0
 // DiskStatsCollector implements the prometheus Collector interface
 // Its sole responsability is gathering metrics on PVCs
 type DiskStatsCollector struct {
-	log logr.Logger
+	log            logr.Logger
+	apiSecretsPath string
 
 	// info metrics of all the scraped PVCs
 	infoDesc Metric
@@ -25,9 +27,10 @@ type DiskStatsCollector struct {
 	descs []Metric
 }
 
-func NewDiskStatsCollector(log logr.Logger) DiskStatsCollector {
+func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsCollector {
 	return DiskStatsCollector{
-		log: log,
+		log:            log,
+		apiSecretsPath: apiSecretsPath,
 		infoDesc: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
 				"Info of Ondat volumes and devices.",
@@ -187,16 +190,16 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	volumes, err := GetOndatVolumes()
+	volumesOnNode, err := GetOndatVolumes()
 	if err != nil {
 		c.log.Error(err, "error getting Ondat volumes")
 		ReportScrapeResult(c.log, ch, timeStart, false)
 		return
 	}
 
-	if len(volumes) == 0 {
-		// TODO confirm this behaviour is desired
+	if len(volumesOnNode) == 0 {
 		c.log.Info("no Ondat volumes")
+		// TODO confirm this behaviour is desired
 		ReportScrapeResult(c.log, ch, timeStart, true)
 		return
 	}
@@ -208,11 +211,36 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	for _, vol := range volumes {
+	// All Ondat volumes fetched from the storageos container's API
+	// Cluster wide thus only one request is needed
+	OndatVolumes := []VolumePVC{}
+
+	for _, vol := range volumesOnNode {
 		err = GetOndatVolumeState(vol)
 		if err != nil {
-			c.log.Error(err, "error reading volume %s state file: %w", vol.ID, err)
-			continue
+			if _, ok := err.(*os.PathError); !ok {
+				c.log.Error(err, fmt.Sprintf("error reading volume %s state file", vol.ID))
+				continue
+			}
+
+			// state files are only present on nodes that host either the master of replica
+			// deployments of a volume. If the volume is attached on a node where neither
+			// of those is found we will have any state files thus fallback to requesting
+			// the data from the storageos API on the same node
+
+			// cluster wide thus only one request needed
+			if len(OndatVolumes) == 0 {
+				OndatVolumes, err = GetAllOndatVolumes(c.log, c.apiSecretsPath)
+				if err != nil {
+					continue
+				}
+			}
+
+			for _, apiVol := range OndatVolumes {
+				if vol.ID == apiVol.ID {
+					vol.PVC = apiVol.PVC
+				}
+			}
 		}
 
 		for _, stats := range diskstats {

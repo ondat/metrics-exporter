@@ -12,6 +12,7 @@ spec:
      labels:
        app: storageos
    spec:
+     serviceAccountName: storageos-api-manager
      containers:
       - name: monitor-test
         image: ricosorio/metrics-exporter:latest
@@ -21,6 +22,8 @@ spec:
            name: state
          - mountPath: /var/lib/kubelet
            name: kubelet-dir
+         - mountPath: /etc/storageos/secrets/api
+           name: api-secret
      volumes:
      - hostPath:
          path: /var/lib/storageos
@@ -29,3 +32,7 @@ spec:
          path: /var/lib/kubelet
          type: Directory
        name: kubelet-dir
+     - name: api-secret
+       secret:
+        secretName: storageos-api
+

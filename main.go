@@ -30,9 +30,10 @@ import (
 
 func main() {
 	var (
-		address  = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
-		endpoint = flag.String("metrics-endpoint", "/metrics", "Endpoint for metrics.")
-		timeout  = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
+		address        = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
+		endpoint       = flag.String("metrics-endpoint", "/metrics", "Endpoint for metrics.")
+		timeout        = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
+		apiSecrestPath = flag.String("api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
 	)
 
 	opts := zap.Options{
@@ -45,7 +46,7 @@ func main() {
 
 	// metrics registry, relying on Prometheus implementation to keep it simple
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewDiskStatsCollector(log))
+	prometheusRegistry.Register(NewDiskStatsCollector(log, *apiSecrestPath))
 
 	// metrics page
 	http.Handle(*endpoint, promhttp.HandlerFor(

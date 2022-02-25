@@ -178,8 +178,6 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 func GetOndatVolumeState(vol *Volume) error {
 	content, err := readOndatVolumeState(vol.ID)
 	if err != nil {
-		// if err is not found need to request from either the k8s api or storagoes instance on the same node
-		// TODO check the client implementation on other repos
 		return err
 	}
 
@@ -191,7 +189,7 @@ func readOndatVolumeState(volID string) ([]byte, error) {
 
 	content, err := os.ReadFile(file)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
+		return nil, err
 	}
 
 	return content, nil
