@@ -57,21 +57,19 @@ type ControlPlane interface {
 
 // Client provides access to the StorageOS API.
 type Client struct {
-	api       ControlPlane
-	transport http.RoundTripper
-	ctx       context.Context
+	ctx context.Context
+	api ControlPlane
 }
 
-// New returns a pre-authenticated client for the StorageOS API.  The
-// authentication token must be refreshed periodically using
-// AuthenticateRefresh().
-func New(username, password, endpoint string) (*Client, error) {
+// NewOndatHttpClient returns a pre-authenticated client for the StorageOS API. The
+// authentication token must be refreshed periodically using AuthenticateRefresh().
+func NewOndatHttpClient(username, password, endpoint string) (*Client, error) {
 	transport := http.DefaultTransport
 	ctx, client, err := newAuthenticatedClient(username, password, endpoint, transport)
 	if err != nil {
 		return nil, err
 	}
-	return &Client{api: client.DefaultApi, transport: transport, ctx: ctx}, nil
+	return &Client{api: client.DefaultApi, ctx: ctx}, nil
 }
 
 func newAuthenticatedClient(username, password, endpoint string, transport http.RoundTripper) (context.Context, *stosapi.APIClient, error) {
@@ -180,7 +178,7 @@ func GetAllOndatVolumes(log logr.Logger, apiSecretsPath string) ([]VolumePVC, er
 		return nil, err
 	}
 
-	c, err := New(username, password, "storageos")
+	c, err := NewOndatHttpClient(username, password, "storageos")
 	if err != nil {
 		log.Error(err, "failed to create api client")
 		return nil, err

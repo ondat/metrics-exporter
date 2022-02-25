@@ -144,7 +144,7 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 		// the volume ID in ControlPlane
 		deviceName   string
 		major, minor int
-		volumes      []*Volume
+		volumes      []*Volume = []*Volume{}
 	)
 
 	for _, line := range input {
@@ -158,7 +158,9 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 			&discard, &discard, &discard, &discard, &major, &minor, &discard, &discard, &discard, &deviceName,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
+			// return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
+			// TODO add logging and continue instead of failing
+			continue
 		}
 
 		volumes = append(volumes,
