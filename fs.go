@@ -17,6 +17,11 @@ import (
 const (
 	STOS_VOLUMES_PATH   = "/var/lib/storageos/volumes"
 	PROC_DISKSTATS_PATH = "/proc/diskstats"
+	// PROC_DISKSTATS_MIN_NUM_FIELDS is the minimum number of fields we expect
+	// to find in the /proc/diskstats (kernels v4.18+ add more).
+	// More about the /proc/diskstats format can be found here:
+	// https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats
+	PROC_DISKSTATS_MIN_NUM_FIELDS = 14
 )
 
 type Labels struct {
@@ -90,7 +95,7 @@ func ProcDiskstats() ([]blockdevice.Diskstats, error) {
 		if err != nil && err != io.EOF {
 			return diskstats, err
 		}
-		if d.IoStatsCount >= 14 {
+		if d.IoStatsCount >= PROC_DISKSTATS_MIN_NUM_FIELDS {
 			diskstats = append(diskstats, *d)
 		}
 	}

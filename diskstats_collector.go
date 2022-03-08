@@ -225,7 +225,7 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 
 			// state files are only present on nodes that host either the master of replica
 			// deployments of a volume. If the volume is attached on a node where neither
-			// of those is found we will have any state files thus fallback to requesting
+			// of those is found we won't have any state files thus fallback to requesting
 			// the data from the storageos API on the same node
 
 			// cluster wide thus only one request needed

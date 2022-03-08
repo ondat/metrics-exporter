@@ -27,5 +27,6 @@ LABEL name="Ondat Metrics Exporter" \
     io.openshift.tags=""
 COPY --from=builder /workspace/metrics-exporter .
 COPY --from=builder /workspace/index.html .
+USER 65532:65532
 
 ENTRYPOINT ["/metrics-exporter"]

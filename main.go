@@ -48,6 +48,9 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 	prometheusRegistry.Register(NewDiskStatsCollector(log, *apiSecrestPath))
 
+	http.HandleFunc("/healthz", healthz)
+	http.HandleFunc("/readyz", readyz)
+
 	// metrics page
 	http.Handle(*endpoint, promhttp.HandlerFor(
 		prometheusRegistry,
@@ -80,4 +83,14 @@ func main() {
 		log.Error(err, "problem running http server")
 		os.Exit(1)
 	}
+}
+
+// healthz is a liveness probe.
+func healthz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+// readyz is a readyness probe.
+func readyz(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

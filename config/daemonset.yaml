@@ -13,9 +13,11 @@ spec:
        app: storageos
    spec:
      serviceAccountName: storageos-api-manager
+    #  securityContext:
+    #   fsGroup: 65532
      containers:
       - name: monitor-test
-        image: ricosorio/metrics-exporter:latest
+        image: docker.rickos.site/ricosorio/metrics-exporter:latest
         imagePullPolicy: Always
         volumeMounts:
          - mountPath: /var/lib/storageos

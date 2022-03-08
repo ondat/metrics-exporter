@@ -27,6 +27,11 @@ const (
 	DefaultScheme = "http"
 	// TLSScheme scheme can be used if the api endpoint has TLS enabled.
 	TLSScheme = "https"
+	// PvcLabel is the name of the label where we find the friendly PVC name
+	// associated to the ondat volume
+	PvcLabel = "csi.storage.k8s.io/pvc/name"
+	// OndatK8sServiceEndpoint is the ondat endpoint exposed by the k8s service
+	OndatK8sServiceEndpoint = "storageos"
 )
 
 var (
@@ -178,7 +183,7 @@ func GetAllOndatVolumes(log logr.Logger, apiSecretsPath string) ([]VolumePVC, er
 		return nil, err
 	}
 
-	c, err := NewOndatHttpClient(username, password, "storageos")
+	c, err := NewOndatHttpClient(username, password, OndatK8sServiceEndpoint)
 	if err != nil {
 		log.Error(err, "failed to create api client")
 		return nil, err
@@ -199,12 +204,12 @@ func GetAllOndatVolumes(log logr.Logger, apiSecretsPath string) ([]VolumePVC, er
 		}
 
 		for _, vol := range vols {
-			pvc := vol.Labels["csi.storage.k8s.io/pvc/name"]
+			pvc := vol.Labels[PvcLabel]
 			res = append(res, VolumePVC{ID: vol.Id, PVC: pvc})
 		}
 	}
 	if len(res) == 0 {
-		return nil, fmt.Errorf("no Ondat volumes found")
+		return nil, fmt.Errorf("no Ondat volumes")
 	}
 	return res, nil
 }
