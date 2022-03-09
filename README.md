@@ -5,8 +5,9 @@ PVC metrics exporter designed to run alongside an Ondat instance.
 It knows where and how to extract the relevant information about the Ondat volumes and makes it available as a Prometheus endpoint. Disks not owned by Ondat are ignored.
 
 <p align="center">
-<img src="https://user-images.githubusercontent.com/26963810/157465141-7b4bd155-4a0e-4666-ad64-b060d62fab41.png" alt="preview-overview-architecture" />
+<img src="https://user-images.githubusercontent.com/26963810/157466080-90678c58-5657-4341-a6fa-eb5e9850af58.png" alt="preview-overview-architecture" />
 </p>
+
 
 All the disk metrics are processed following the node_exporter's implementation
 
