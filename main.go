@@ -57,7 +57,6 @@ func main() {
 		promhttp.HandlerOpts{
 			// the request continues on the background but the user gets the correct response
 			Timeout:       time.Second * time.Duration(*timeout),
-			ErrorLog:      &LoggerWrapper{}, // testing
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
