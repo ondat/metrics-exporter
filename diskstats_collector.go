@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -213,33 +212,18 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// All Ondat volumes fetched from the storageos container's API
 	// Cluster wide thus only one request is needed
-	OndatVolumes := []VolumePVC{}
+	ondatVolumes, err := GetAllOndatVolumes(c.log, c.apiSecretsPath)
+	if err != nil {
+		c.log.Error(err, "error contacting Ondat API")
+		ReportScrapeResult(c.log, ch, timeStart, false)
+		return
+	}
 
 	for _, vol := range volumesOnNode {
-		err = GetOndatVolumeState(vol)
-		if err != nil {
-			if _, ok := err.(*os.PathError); !ok {
-				c.log.Error(err, fmt.Sprintf("error reading volume %s state file", vol.ID))
-				continue
-			}
-
-			// state files are only present on nodes that host either the master of replica
-			// deployments of a volume. If the volume is attached on a node where neither
-			// of those is found we won't have any state files thus fallback to requesting
-			// the data from the storageos API on the same node
-
-			// cluster wide thus only one request needed
-			if len(OndatVolumes) == 0 {
-				OndatVolumes, err = GetAllOndatVolumes(c.log, c.apiSecretsPath)
-				if err != nil {
-					continue
-				}
-			}
-
-			for _, apiVol := range OndatVolumes {
-				if vol.ID == apiVol.ID {
-					vol.PVC = apiVol.PVC
-				}
+		// find the volume within the list from the API and get the PVC name
+		for _, apiVol := range ondatVolumes {
+			if vol.ID == apiVol.ID {
+				vol.PVC = apiVol.PVC
 			}
 		}
 

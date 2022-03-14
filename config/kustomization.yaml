@@ -1,0 +1,6 @@
+resources:
+- daemonset.yaml
+- perms.yaml
+- prometheus.yaml
+- service-monitor.yaml
+- service.yaml

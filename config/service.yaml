@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: storageos-metrics-exporter
+  namespace: storageos
+  labels:
+    app: storageos
+    service-discovery: storageos-metrics-exporter
+spec:
+  selector:
+    category: metrics-exporter
+  ports:
+  - name: metrics
+    port: 9100
+  clusterIP: "None" # headless

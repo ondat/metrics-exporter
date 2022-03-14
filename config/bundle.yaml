@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-service-account
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-list-perms
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  - pods
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-list-perms-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-list-perms
+subjects:
+- kind: ServiceAccount
+  name: prometheus-service-account
+  namespace: default
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: storageos
+    service-discovery: storageos-metrics-exporter
+  name: storageos-metrics-exporter
+  namespace: storageos
+spec:
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: 9100
+  selector:
+    category: metrics-exporter
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: storageos-metrics-exporter
+  namespace: storageos
+spec:
+  selector:
+    matchLabels:
+      app: storageos
+  template:
+    metadata:
+      labels:
+        app: storageos
+        category: metrics-exporter
+    spec:
+      containers:
+      - image: docker.rickos.site/ricosorio/metrics-exporter:latest
+        imagePullPolicy: Always
+        name: storageos-metrics-exporter
+        volumeMounts:
+        - mountPath: /var/lib/storageos
+          name: state
+          readOnly: true
+        - mountPath: /var/lib/kubelet
+          name: kubelet-dir
+          readOnly: true
+        - mountPath: /etc/storageos/secrets/api
+          name: api-secret
+          readOnly: true
+      serviceAccountName: storageos-api-manager
+      volumes:
+      - hostPath:
+          path: /var/lib/storageos
+        name: state
+      - hostPath:
+          path: /var/lib/kubelet
+          type: Directory
+        name: kubelet-dir
+      - name: api-secret
+        secret:
+          secretName: storageos-api
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app: storageos
+  name: prometheus
+spec:
+  serviceAccountName: prometheus-service-account
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: storageos
+  name: metrics-test-service-monitor
+  namespace: storageos
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+  namespaceSelector:
+    matchNames:
+    - storageos
+  selector:
+    matchLabels:
+      service-discovery: storageos-metrics-exporter

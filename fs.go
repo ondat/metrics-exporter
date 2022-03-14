@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -23,15 +22,6 @@ const (
 	// https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats
 	PROC_DISKSTATS_MIN_NUM_FIELDS = 14
 )
-
-type Labels struct {
-	PVC string `json:"csi.storage.k8s.io/pvc/name"`
-}
-
-// VolumeJson is used to extract the information we need from the CP state files
-type VolumeJson struct {
-	Labels `json:"labels"`
-}
 
 type Volume struct {
 	Major int
@@ -178,37 +168,4 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 	}
 
 	return volumes, nil
-}
-
-// GetOndatVolumeState parses a Control Plane volume state file and fills in all
-// the data we are missing from the volume that is not found on OS files
-func GetOndatVolumeState(vol *Volume) error {
-	content, err := readOndatVolumeState(vol.ID)
-	if err != nil {
-		return err
-	}
-
-	return parseOndatVolumeState(vol, content)
-}
-
-func readOndatVolumeState(volID string) ([]byte, error) {
-	file := fmt.Sprintf("/var/lib/storageos/state/v.%s.json", volID)
-
-	content, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return content, nil
-}
-
-func parseOndatVolumeState(vol *Volume, content []byte) error {
-	volumeState := &VolumeJson{}
-	err := json.Unmarshal(content, volumeState)
-	if err != nil {
-		return fmt.Errorf("failed to parse file content: %w", err)
-	}
-
-	vol.PVC = volumeState.PVC
-	return nil
 }

@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-test-service-monitor
+  namespace: storageos
+  labels:
+    # can be used with the prometheus operator to monitor this specific
+    # ServiceMonitor instance as oposed to all in the cluster
+    app: storageos
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+  selector:
+    matchLabels:
+      service-discovery: storageos-metrics-exporter
+  namespaceSelector:
+    matchNames:
+    - storageos
