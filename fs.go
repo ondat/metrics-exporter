@@ -101,10 +101,10 @@ func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 }
 
-// GetOndatVolumes parses the output from "ls -l" on the storageos block devices
+// GetOndatVolumesFS parses the output from "ls -l" on the storageos block devices
 // directory and builds a list of all volumes found.
 // includes Major & Minor numbers and Volume ID
-func GetOndatVolumes() ([]*Volume, error) {
+func GetOndatVolumesFS() ([]*Volume, error) {
 	output, err := readOndatVolumes()
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func readOndatVolumes() ([]string, error) {
 
 func parseOndatVolumes(input []string) ([]*Volume, error) {
 	// exclude first and last elements
-	// first line of `ls -l`` shows the total size of blocks on that
+	// first line of `ls -l` shows the total size of blocks on that
 	// dir and the ending "\n" creates an empty element on the array
 	input = input[1 : len(input)-1]
 	if len(input) == 0 {

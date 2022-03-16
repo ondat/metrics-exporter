@@ -15,8 +15,7 @@ const SECOND_IN_MILLISECONDS = 1.0 / 1000.0
 // DiskStatsCollector implements the prometheus Collector interface
 // Its sole responsability is gathering metrics on PVCs
 type DiskStatsCollector struct {
-	log            logr.Logger
-	apiSecretsPath string
+	log logr.Logger
 
 	// info metrics of all the scraped PVCs
 	infoDesc Metric
@@ -26,10 +25,9 @@ type DiskStatsCollector struct {
 	descs []Metric
 }
 
-func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsCollector {
+func NewDiskStatsCollector(log logr.Logger) DiskStatsCollector {
 	return DiskStatsCollector{
-		log:            log,
-		apiSecretsPath: apiSecretsPath,
+		log: log,
 		infoDesc: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
 				"Info of Ondat volumes and devices.",
@@ -42,7 +40,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "reads_completed_total"),
 					"The total number of reads completed successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -50,7 +48,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "reads_merged_total"),
 					"The total number of reads merged.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -58,7 +56,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "read_bytes_total"),
 					"The total number of bytes read successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -66,7 +64,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "read_time_seconds_total"),
 					"The total number of seconds spent by all reads.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -74,7 +72,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "writes_completed_total"),
 					"The total number of writes completed successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -82,7 +80,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "writes_merged_total"),
 					"The number of writes merged.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -90,7 +88,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "written_bytes_total"),
 					"The total number of bytes written successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -98,7 +96,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "write_time_seconds_total"),
 					"This is the total number of seconds spent by all writes.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -106,7 +104,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "io_now"),
 					"The number of I/Os currently in progress.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.GaugeValue,
 			},
@@ -114,7 +112,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "io_time_seconds_total"),
 					"Total seconds spent doing I/Os.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -122,7 +120,7 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "io_time_weighted_seconds_total"),
 					"The weighted # of seconds spent doing I/Os.",
-					labelNames, nil,
+					pvcLabels, nil,
 				),
 				valueType: prometheus.CounterValue,
 			},
@@ -130,42 +128,42 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "discards_completed_total"),
 					"The total number of discards completed successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "discards_merged_total"),
 					"The total number of discards merged.",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "discarded_sectors_total"),
 					"The total number of sectors discarded successfully.",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "discard_time_seconds_total"),
 					"This is the total number of seconds spent by all discards.",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "flush_requests_total"),
 					"The total number of flush requests completed successfully",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "flush_requests_time_seconds_total"),
 					"This is the total number of seconds spent by all flush requests.",
-					labelNames, nil,
+					pvcLabels, nil,
 				), valueType: prometheus.CounterValue,
 			},
 		},
@@ -173,8 +171,8 @@ func NewDiskStatsCollector(log logr.Logger, apiSecretsPath string) DiskStatsColl
 }
 
 func (c DiskStatsCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- scrapeDurationDesc
-	ch <- scrapeSuccessDesc
+	ch <- scrapeDurationMetric.desc
+	// ch <- scrapeSuccessMetric.desc
 }
 
 // Collect gathers all the metrics and reports back on both the process itself
@@ -185,37 +183,39 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 
 	if err := ValidateDir(STOS_VOLUMES_PATH); err != nil {
 		c.log.Error(err, "error validating Ondat volumes directory")
-		ReportScrapeResult(c.log, ch, timeStart, false)
+		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
 		return
 	}
 
-	volumesOnNode, err := GetOndatVolumes()
+	volumesOnNode, err := GetOndatVolumesFS()
 	if err != nil {
 		c.log.Error(err, "error getting Ondat volumes")
-		ReportScrapeResult(c.log, ch, timeStart, false)
+		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
 		return
 	}
 
 	if len(volumesOnNode) == 0 {
 		c.log.Info("no Ondat volumes")
 		// TODO confirm this behaviour is desired
-		ReportScrapeResult(c.log, ch, timeStart, true)
+		ReportScrapeResult(c.log, ch, timeStart, "diskstats", true)
 		return
 	}
 
 	diskstats, err := ProcDiskstats()
 	if err != nil {
 		c.log.Error(err, "error reading diskstats")
-		ReportScrapeResult(c.log, ch, timeStart, false)
+		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
 		return
 	}
 
 	// All Ondat volumes fetched from the storageos container's API
 	// Cluster wide thus only one request is needed
-	ondatVolumes, err := GetAllOndatVolumes(c.log, c.apiSecretsPath)
+	// TODO both collectors are fetching the same data from the API
+	// this needs work
+	ondatVolumes, err := GetOndatVolumesAPI(c.log, apiSecretsPath)
 	if err != nil {
 		c.log.Error(err, "error contacting Ondat API")
-		ReportScrapeResult(c.log, ch, timeStart, false)
+		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
 		return
 	}
 
@@ -224,6 +224,7 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 		for _, apiVol := range ondatVolumes {
 			if vol.ID == apiVol.ID {
 				vol.PVC = apiVol.PVC
+				break
 			}
 		}
 
@@ -234,7 +235,9 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 			vol.metrics = stats
 
-			ch <- NewConstMetric(c.log, c.infoDesc.desc, c.infoDesc.valueType, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
+			// TODO move into different metric?
+			m := Metric{desc: c.infoDesc.desc, valueType: c.infoDesc.valueType}
+			ch <- NewConstMetric(c.log, m, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
 
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
@@ -273,27 +276,10 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 					break
 				}
 
-				ch <- NewConstMetric(c.log, c.descs[i].desc, c.descs[i].valueType, val, vol.PVC)
+				m := Metric{desc: c.descs[i].desc, valueType: c.descs[i].valueType}
+				ch <- NewConstMetric(c.log, m, val, vol.PVC)
 			}
 		}
 	}
-	ReportScrapeResult(c.log, ch, timeStart, true)
-}
-
-func ReportScrapeResult(log logr.Logger, ch chan<- prometheus.Metric, timer time.Time, success bool) {
-	ch <- NewConstMetric(log, scrapeDurationDesc, prometheus.GaugeValue, time.Since(timer).Seconds(), "diskstats")
-
-	successReturn := 1.0
-	if !success {
-		successReturn = 0
-	}
-	ch <- NewConstMetric(log, scrapeSuccessDesc, prometheus.GaugeValue, successReturn, "diskstats")
-}
-
-func NewConstMetric(log logr.Logger, desc *prometheus.Desc, valueType prometheus.ValueType, value float64, labels ...string) prometheus.Metric {
-	m, err := prometheus.NewConstMetric(desc, valueType, value, labels...)
-	if err != nil {
-		log.Error(err, "failed creating new const metric: %w", err)
-	}
-	return m
+	ReportScrapeResult(c.log, ch, timeStart, "diskstats", true)
 }

@@ -174,9 +174,9 @@ func Read(path string) (string, error) {
 	return val, nil
 }
 
-// GetAllOndatVolumes wraps all the necessary steps to request the Ondat volumes from
+// GetOndatVolumesAPI wraps all the necessary steps to request the Ondat volumes from
 // the storageos instance on this node (authentication, get ns, get vols)
-func GetAllOndatVolumes(log logr.Logger, apiSecretsPath string) ([]VolumePVC, error) {
+func GetOndatVolumesAPI(log logr.Logger, apiSecretsPath string) ([]VolumePVC, error) {
 	username, password, err := ReadCredsFromMountedSecret(apiSecretsPath)
 	if err != nil {
 		log.Error(err, "failed to read creds")

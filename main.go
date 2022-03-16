@@ -28,12 +28,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+const (
+	address  = ":9100"
+	endpoint = "/metrics"
+)
+
+// globals
+var apiSecretsPath string
+
 func main() {
 	var (
-		address        = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
-		endpoint       = flag.String("metrics-endpoint", "/metrics", "Endpoint for metrics.")
-		timeout        = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
-		apiSecrestPath = flag.String("api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
+		timeoutFlag        = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
+		apiSecretsPathFlag = flag.String("api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
 	)
 
 	opts := zap.Options{
@@ -42,21 +48,24 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	apiSecretsPath = *apiSecretsPathFlag
+
 	log := zap.New(zap.UseFlagOptions(&opts))
 
-	// metrics registry, relying on Prometheus implementation to keep it simple
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewDiskStatsCollector(log, *apiSecrestPath))
+	prometheusRegistry.Register(NewDiskStatsCollector(log))
+	prometheusRegistry.Register(NewFileSystemCollector(log))
 
+	// k8s endpoints
 	http.HandleFunc("/healthz", healthz)
 	http.HandleFunc("/readyz", readyz)
 
 	// metrics page
-	http.Handle(*endpoint, promhttp.HandlerFor(
+	http.Handle(endpoint, promhttp.HandlerFor(
 		prometheusRegistry,
 		promhttp.HandlerOpts{
 			// the request continues on the background but the user gets the correct response
-			Timeout:       time.Second * time.Duration(*timeout),
+			Timeout:       time.Second * time.Duration(*timeoutFlag),
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
@@ -70,7 +79,7 @@ func main() {
 			MetricsEndpoint string
 		}{
 			Title:           "Metrics exporter",
-			MetricsEndpoint: *endpoint,
+			MetricsEndpoint: endpoint,
 		}
 		templ.Execute(w, &data)
 		w.Header().Set("Content-Type", "text/html")
@@ -78,7 +87,7 @@ func main() {
 	}))
 
 	log.Info("starting http handler", "port", address)
-	if err := http.ListenAndServe(*address, nil); err != nil {
+	if err := http.ListenAndServe(address, nil); err != nil {
 		log.Error(err, "problem running http server")
 		os.Exit(1)
 	}

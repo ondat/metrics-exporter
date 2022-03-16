@@ -1,0 +1,50 @@
+# Testing manifests. Deploy a prometheus instance that scrapes all ServiceMonitors in all namespaces
+# Requires prometheus CRD to be installed:
+#   kubectl create -f https://github.com/prometheus-operator/prometheus-operator/releases/download/v0.55.0/bundle.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-service-account
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-list-perms
+rules:
+- apiGroups: [""]
+  resources:
+  - "endpoints"
+  - "pods"
+  - "services"
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-list-perms-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-list-perms
+subjects:
+- kind: ServiceAccount
+  name: prometheus-service-account
+  namespace: default
+---
+# single instance
+# data is not persisted between restarts
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  labels:
+    app: storageos
+spec:
+  serviceAccountName: prometheus-service-account
+  serviceMonitorSelector: {} # all
+    # matchLabels:
+    #   app: storageos
+  serviceMonitorNamespaceSelector: {} # all
+    # matchLabels:
+    #   app: storageos
