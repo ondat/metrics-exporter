@@ -66,3 +66,7 @@ docker-build: test ## Build docker image.
 .PHONY: docker-push
 docker-push: ## Push docker image.
 	docker push ${IMAGE}
+
+.PHONY: bundle
+bundle: ## build the install bundle with kustomize
+	kustomize build manifests > manifests/bundle.yaml

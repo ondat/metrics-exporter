@@ -57,15 +57,15 @@ brw-rw---- 1 root disk      8, 48 Feb 25 15:18 v.78e88095-e690-49be-b0f3-3f735ef
 			expectedVolumes: []*Volume{},
 			expectedErr:     nil,
 		},
-		// 		{
-		// 			name: "somehow unexpected value in input",
-		// 			input: `total 262144
-		// -rw-rw---- 1 root disk 2147483648 Feb 25 15:18 d.d613df45-a162-4166-acf2-717a647e1150
-		// brw-rw---- 1 root disk     8, ops Feb 25 16:07 v.c3561d79-459f-4e5d-b5bb-f71ae7b38672
-		// `,
-		// 			expectedVolumes: []*Volume{},
-		// 			expectedErr:     nil,
-		// 		},
+		{
+			name: "unexpected value in input, invalid minor number",
+			input: `total 262144
+		-rw-rw---- 1 root disk 2147483648 Feb 25 15:18 d.d613df45-a162-4166-acf2-717a647e1150
+		brw-rw---- 1 root disk     8, ops Feb 25 16:07 v.c3561d79-459f-4e5d-b5bb-f71ae7b38672
+		`,
+			expectedVolumes: []*Volume{},
+			expectedErr:     nil,
+		},
 	}
 
 	for _, tt := range tests {

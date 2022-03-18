@@ -185,9 +185,8 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 	}
 
 	if len(volumesOnNode) == 0 {
-		log.Debug("no Ondat volumes")
+		log.Debug("no Ondat volumes on node")
 		// TODO confirm this behaviour is desired
-		// ReportScrapeResult(log, ch, timeStart, "diskstats", true)
 		return nil
 	}
 
@@ -197,23 +196,23 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 		return err
 	}
 
-	for _, vol := range volumesOnNode {
+	for _, localVol := range volumesOnNode {
 		// find the volume within the list from the API and get the PVC name
 		for _, apiVol := range ondatVolumes {
-			if vol.ID == apiVol.ID {
-				vol.PVC = apiVol.PVC
+			if localVol.ID == apiVol.ID {
+				localVol.PVC = apiVol.PVC
 				break
 			}
 		}
 
 		for _, stats := range diskstats {
 			// match with Ondat volume through diskstat row's Major and Minor numbers
-			if vol.Major != int(stats.MajorNumber) || vol.Minor != int(stats.MinorNumber) {
+			if localVol.Major != int(stats.MajorNumber) || localVol.Minor != int(stats.MinorNumber) {
 				continue
 			}
 
 			// TODO move into different metric?
-			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
+			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, stats.DeviceName, localVol.PVC, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
 			ch <- metric
 
 			diskSectorSize := 512.0
@@ -253,7 +252,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 					break
 				}
 
-				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, vol.PVC)
+				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC)
 				ch <- metric
 			}
 		}

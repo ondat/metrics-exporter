@@ -132,6 +132,7 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 
 		stuckMountsMtx.Lock()
 		if _, ok := stuckMounts[labels.mountPoint]; ok {
+			// TODO
 			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
 			log.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
 			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, labels.device, labels.fsType, labels.mountPoint)
@@ -145,7 +146,7 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		// The success channel is used do tell the "watcher" that the stat
 		// finished successfully. The channel is closed on success.
 		success := make(chan struct{})
-		go stuckMountWatcher(labels.mountPoint, success, log)
+		go stuckMountWatcher(log, labels.mountPoint, success, log)
 
 		buf := new(unix.Statfs_t)
 		err = unix.Statfs(labels.mountPoint, buf)
@@ -197,7 +198,7 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 // stuckMountWatcher listens on the given success channel and if the channel closes
 // then the watcher does nothing. If instead the timeout is reached, the
 // mount point that is being watched is marked as stuck.
-func stuckMountWatcher(mountPoint string, success chan struct{}, logger *zap.SugaredLogger) {
+func stuckMountWatcher(log *zap.SugaredLogger, mountPoint string, success chan struct{}, logger *zap.SugaredLogger) {
 	mountCheckTimer := time.NewTimer(time.Second * 5)
 	defer mountCheckTimer.Stop()
 	select {
@@ -210,7 +211,7 @@ func stuckMountWatcher(mountPoint string, success chan struct{}, logger *zap.Sug
 		case <-success:
 			// Success came in just after the timeout was reached, don't label the mount as stuck
 		default:
-			// level.Debug(logger).Log("msg", "Mount point timed out, it is being labeled as stuck and will not be monitored", "mountpoint", mountPoint)
+			log.Errorw("mount point timed out, it is being labeled as stuck and will not be monitored", "mountpoint", mountPoint)
 			stuckMounts[mountPoint] = struct{}{}
 		}
 		stuckMountsMtx.Unlock()
