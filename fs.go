@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	STOS_VOLUMES_PATH   = "/var/lib/storageos/volumes"
-	PROC_DISKSTATS_PATH = "/proc/diskstats"
+	STOS_VOLUMES_PATH = "/var/lib/storageos/volumes"
+	DISKSTATS_PATH    = "/proc/diskstats"
+
 	// PROC_DISKSTATS_MIN_NUM_FIELDS is the minimum number of fields we expect
 	// to find in the /proc/diskstats (kernels v4.18+ add more).
 	// More about the /proc/diskstats format can be found here:
@@ -27,28 +28,13 @@ type Volume struct {
 	Major int
 	Minor int
 	ID    string // Control Plane volume ID
-	PVC   string // K8s friendly PVC name (not the ID)
-
-	// metrics
-	metrics blockdevice.Diskstats
+	PVC   string // K8s friendly PVC name
 }
 
-// ValidateDir checks if the path can be read and is a Directory
-func ValidateDir(dir string) error {
-	info, err := os.Stat(dir)
-	if err != nil {
-		return fmt.Errorf("could not read directory %q: %w", dir, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%q is not a directory", dir)
-	}
-	return nil
-}
-
-// ProcDiskstats reads the diskstats file and returns
-// an array of Diskstats (one per line/device)
+// ProcDiskstats reads the diskstats file and returns an array of Diskstats (one
+// per line/device)
 func ProcDiskstats() ([]blockdevice.Diskstats, error) {
-	file, err := os.Open("/proc/diskstats")
+	file, err := os.Open(DISKSTATS_PATH)
 	if err != nil {
 		return nil, err
 	}
@@ -101,10 +87,18 @@ func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 }
 
-// GetOndatVolumes parses the output from "ls -l" on the storageos block devices
-// directory and builds a list of all volumes found.
+// GetOndatVolumesFS parses the output from "ls -l" on the storageos block devices
+// directory and builds a list of all local volumes found.
 // includes Major & Minor numbers and Volume ID
-func GetOndatVolumes() ([]*Volume, error) {
+func GetOndatVolumesFS() ([]*Volume, error) {
+	info, err := os.Stat(STOS_VOLUMES_PATH)
+	if err != nil {
+		return nil, fmt.Errorf("could not read directory %q: %w", STOS_VOLUMES_PATH, err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("%q is not a directory", STOS_VOLUMES_PATH)
+	}
+
 	output, err := readOndatVolumes()
 	if err != nil {
 		return nil, err
@@ -114,7 +108,7 @@ func GetOndatVolumes() ([]*Volume, error) {
 }
 
 func readOndatVolumes() ([]string, error) {
-	outputRaw, err := exec.Command("ls", "-l", "/var/lib/storageos/volumes").Output()
+	outputRaw, err := exec.Command("ls", "-l", STOS_VOLUMES_PATH).Output()
 	if err != nil {
 		return nil, fmt.Errorf("command failed: %w", err)
 	}
@@ -124,7 +118,7 @@ func readOndatVolumes() ([]string, error) {
 
 func parseOndatVolumes(input []string) ([]*Volume, error) {
 	// exclude first and last elements
-	// first line of `ls -l`` shows the total size of blocks on that
+	// first line of `ls -l` shows the total size of blocks on that
 	// dir and the ending "\n" creates an empty element on the array
 	input = input[1 : len(input)-1]
 	if len(input) == 0 {

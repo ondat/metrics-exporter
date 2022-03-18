@@ -20,3 +20,5 @@ We also include metrics about the scrape itself:
  - [Prometheus guidelines on writting exporters](https://prometheus.io/docs/instrumenting/writing_exporters/)
  - [node_exporter github](https://github.com/prometheus/node_exporter)
  - [Format of /proc/diskstats](https://www.kernel.org/doc/Documentation/ABI/testing/procfs-diskstats)
+ - [About /proc/1/mounts](https://man7.org/linux/man-pages/man5/fstab.5.html)
+ - [More on statfs syscall](https://man7.org/linux/man-pages/man2/statfs.2.html)

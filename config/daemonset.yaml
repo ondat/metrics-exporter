@@ -13,11 +13,11 @@ spec:
         app: storageos
         category: metrics-exporter
    spec:
-     serviceAccountName: storageos-api-manager # add its own or use default
+     serviceAccountName: storageos-api-manager # TODO add its own or use default
      containers:
       - name: storageos-metrics-exporter
-        image: docker.rickos.site/ricosorio/metrics-exporter:latest # use storageos registry
-        imagePullPolicy: Always # revert to default
+        image: docker.rickos.site/ricosorio/metrics-exporter:latest # TODO use storageos registry
+        imagePullPolicy: Always # TODO revert to default
         volumeMounts:
          - mountPath: /var/lib/storageos
            name: state

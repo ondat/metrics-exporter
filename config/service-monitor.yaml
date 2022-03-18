@@ -7,6 +7,7 @@ metadata:
     # can be used with the prometheus operator to monitor this specific
     # ServiceMonitor instance as oposed to all in the cluster
     app: storageos
+    # may need "app: prometheus" when installed through helms
 spec:
   endpoints:
     - path: /metrics

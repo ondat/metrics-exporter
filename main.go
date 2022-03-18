@@ -19,44 +19,69 @@ package main
 import (
 	"flag"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
+
+// if these are to be configurable then we need to add them to a config map and
+// refer to that configmap from the servicemonitor + service + ?
+const (
+	address  = ":9100"
+	endpoint = "/metrics"
 )
 
 func main() {
-	var (
-		address        = flag.String("listen-address", ":9100", "The address to listen on for HTTP requests.")
-		endpoint       = flag.String("metrics-endpoint", "/metrics", "Endpoint for metrics.")
-		timeout        = flag.Int("timeout", 5, "Timeout in seconds to serve metrics.")
-		apiSecrestPath = flag.String("api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
-	)
+	var logLevelFlag, apiSecretsPathFlag string
+	var timeoutFlag int
 
-	opts := zap.Options{
-		Development: true,
-	}
-	opts.BindFlags(flag.CommandLine)
+	flag.StringVar(&logLevelFlag, "log-level", "info", "Verbosity of log messages. Accepts go.uber.org/zap log levels.")
+	flag.StringVar(&apiSecretsPathFlag, "api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
+	flag.IntVar(&timeoutFlag, "timeout", 5, "Timeout in seconds to serve metrics.")
+
 	flag.Parse()
 
-	log := zap.New(zap.UseFlagOptions(&opts))
+	level, err := zapcore.ParseLevel(logLevelFlag)
+	if err != nil {
+		log.Printf("failed to parse log level %s: %s\n", logLevelFlag, err.Error())
+		os.Exit(1)
+	}
 
-	// metrics registry, relying on Prometheus implementation to keep it simple
+	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.Level.SetLevel(level)
+
+	logger, err := loggerConfig.Build()
+	if err != nil {
+		log.Printf("failed to build logger from desired config: %s\n", err.Error())
+		os.Exit(1)
+	}
+	defer logger.Sync()
+	log := logger.Sugar()
+
+	metricsCollectors := []Collector{
+		NewDiskStatsCollector(),
+		NewFileSystemCollector(),
+	}
+
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewDiskStatsCollector(log, *apiSecrestPath))
+	prometheusRegistry.Register(NewCollector(log, apiSecretsPathFlag, metricsCollectors))
 
+	// k8s endpoints
 	http.HandleFunc("/healthz", healthz)
 	http.HandleFunc("/readyz", readyz)
 
 	// metrics page
-	http.Handle(*endpoint, promhttp.HandlerFor(
+	http.Handle(endpoint, promhttp.HandlerFor(
 		prometheusRegistry,
 		promhttp.HandlerOpts{
 			// the request continues on the background but the user gets the correct response
-			Timeout:       time.Second * time.Duration(*timeout),
+			Timeout:       time.Second * time.Duration(timeoutFlag),
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
@@ -70,16 +95,16 @@ func main() {
 			MetricsEndpoint string
 		}{
 			Title:           "Metrics exporter",
-			MetricsEndpoint: *endpoint,
+			MetricsEndpoint: endpoint,
 		}
 		templ.Execute(w, &data)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	log.Info("starting http handler", "port", address)
-	if err := http.ListenAndServe(*address, nil); err != nil {
-		log.Error(err, "problem running http server")
+	log.Infow("starting http handler", "port", address)
+	if err := http.ListenAndServe(address, nil); err != nil {
+		log.Errorw("problem running http server", "error", err)
 		os.Exit(1)
 	}
 }
