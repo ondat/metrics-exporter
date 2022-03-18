@@ -1,9 +1,6 @@
 package main
 
 import (
-	"time"
-
-	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -29,6 +26,13 @@ const (
 	SCRAPE_SUBSYSTEM = "scrape"
 )
 
+// Metric is a wrapper over prometheus types (desc and type) defining a
+// standalone metric
+type Metric struct {
+	desc      *prometheus.Desc
+	valueType prometheus.ValueType
+}
+
 var (
 	// labels present in all disk metrics to identify the PVC
 	pvcLabels = []string{"pvc"}
@@ -39,7 +43,7 @@ var (
 	// labels present in all scrape metrics to identify the collector
 	collectorLabels = []string{"collector"}
 
-	// scrapeDurationMetric defines the scrape duration metric desc
+	// scrapeDurationMetric defines the scrape duration metric
 	// shared between all metric collectors
 	scrapeDurationMetric = Metric{
 		desc: prometheus.NewDesc(
@@ -50,7 +54,7 @@ var (
 		valueType: prometheus.GaugeValue,
 	}
 
-	// scrapeDurationDesc defines the scrape success/failure metric desc
+	// scrapeDurationDesc defines the scrape success/failure metric
 	// shared between all metric collectors
 	scrapeSuccessMetric = Metric{
 		desc: prometheus.NewDesc(
@@ -61,28 +65,3 @@ var (
 		valueType: prometheus.GaugeValue,
 	}
 )
-
-// Metric is a wrapper over prometheus types (desc and type) defining a
-// standalone metric
-type Metric struct {
-	desc      *prometheus.Desc
-	valueType prometheus.ValueType
-}
-
-func ReportScrapeResult(log logr.Logger, ch chan<- prometheus.Metric, timer time.Time, collector string, success bool) {
-	ch <- NewConstMetric(log, scrapeDurationMetric, time.Since(timer).Seconds(), collector)
-
-	successReturn := 1.0
-	if !success {
-		successReturn = 0
-	}
-	ch <- NewConstMetric(log, scrapeSuccessMetric, successReturn, collector)
-}
-
-func NewConstMetric(log logr.Logger, metric Metric, value float64, labels ...string) prometheus.Metric {
-	m, err := prometheus.NewConstMetric(metric.desc, metric.valueType, value, labels...)
-	if err != nil {
-		log.Error(err, "failed creating new const metric: %w", err)
-	}
-	return m
-}

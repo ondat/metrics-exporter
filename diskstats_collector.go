@@ -2,40 +2,40 @@ package main
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-// SECOND_IN_MILLISECONDS defines the number of seconds on a milliseconds. Used
-// to transform metrics that express a duration in milliseconds.
-const SECOND_IN_MILLISECONDS = 1.0 / 1000.0
+const (
+	// SECOND_IN_MILLISECONDS defines the number of seconds on a milliseconds. Used
+	// to transform metrics that express a duration in milliseconds.
+	SECOND_IN_MILLISECONDS   = 1.0 / 1000.0
+	DISKSTATS_COLLECTOR_NAME = "diskstats"
+)
 
 // DiskStatsCollector implements the prometheus Collector interface
 // Its sole responsability is gathering metrics on PVCs
 type DiskStatsCollector struct {
-	log logr.Logger
+	// info of all the scraped PVCs
+	info Metric
 
-	// info metrics of all the scraped PVCs
-	infoDesc Metric
 	// all PVC metrics we gather from diskstats
 	// usefull as a standalone variable to iterate over and index match with diskstats's content
 	// order MUST match the columns in the diskstats file
-	descs []Metric
+	metrics []Metric
 }
 
-func NewDiskStatsCollector(log logr.Logger) DiskStatsCollector {
+func NewDiskStatsCollector() DiskStatsCollector {
 	return DiskStatsCollector{
-		log: log,
-		infoDesc: Metric{
+		info: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
 				"Info of Ondat volumes and devices.",
 				[]string{"device", "pvc", "major", "minor"}, nil,
 			),
 			valueType: prometheus.GaugeValue,
 		},
-		descs: []Metric{
+		metrics: []Metric{
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "reads_completed_total"),
@@ -170,53 +170,31 @@ func NewDiskStatsCollector(log logr.Logger) DiskStatsCollector {
 	}
 }
 
-func (c DiskStatsCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- scrapeDurationMetric.desc
-	// ch <- scrapeSuccessMetric.desc
+func (c DiskStatsCollector) Name() string {
+	return DISKSTATS_COLLECTOR_NAME
 }
 
-// Collect gathers all the metrics and reports back on both the process itself
-// but also everything that has been gathered successfully.
-// Can be called multiple times asynchronously from the registry.
-func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
-	timeStart := time.Now()
-
-	if err := ValidateDir(STOS_VOLUMES_PATH); err != nil {
-		c.log.Error(err, "error validating Ondat volumes directory")
-		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
-		return
-	}
+func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
+	log.Debug("starting diskstats collector")
+	log = log.With("collector", DISKSTATS_COLLECTOR_NAME)
 
 	volumesOnNode, err := GetOndatVolumesFS()
 	if err != nil {
-		c.log.Error(err, "error getting Ondat volumes")
-		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
-		return
+		log.Errorw("error getting Ondat volumes", "error", err)
+		return err
 	}
 
 	if len(volumesOnNode) == 0 {
-		c.log.Info("no Ondat volumes")
+		log.Debug("no Ondat volumes")
 		// TODO confirm this behaviour is desired
-		ReportScrapeResult(c.log, ch, timeStart, "diskstats", true)
-		return
+		// ReportScrapeResult(log, ch, timeStart, "diskstats", true)
+		return nil
 	}
 
 	diskstats, err := ProcDiskstats()
 	if err != nil {
-		c.log.Error(err, "error reading diskstats")
-		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
-		return
-	}
-
-	// All Ondat volumes fetched from the storageos container's API
-	// Cluster wide thus only one request is needed
-	// TODO both collectors are fetching the same data from the API
-	// this needs work
-	ondatVolumes, err := GetOndatVolumesAPI(c.log, apiSecretsPath)
-	if err != nil {
-		c.log.Error(err, "error contacting Ondat API")
-		ReportScrapeResult(c.log, ch, timeStart, "diskstats", false)
-		return
+		log.Errorw("error reading diskstats", "error", err)
+		return err
 	}
 
 	for _, vol := range volumesOnNode {
@@ -233,16 +211,15 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 			if vol.Major != int(stats.MajorNumber) || vol.Minor != int(stats.MinorNumber) {
 				continue
 			}
-			vol.metrics = stats
 
 			// TODO move into different metric?
-			m := Metric{desc: c.infoDesc.desc, valueType: c.infoDesc.valueType}
-			ch <- NewConstMetric(c.log, m, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
+			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, stats.DeviceName, vol.PVC, fmt.Sprint(vol.Major), fmt.Sprint(vol.Minor))
+			ch <- metric
 
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
 			if err != nil {
-				c.log.Error(err, "error reading device logical block size, falling back to default")
+				log.Errorw("error reading device logical block size, falling back to default", "error", err)
 				// continue with default sector size
 			} else {
 				diskSectorSize = float64(logicalBlockSize)
@@ -276,10 +253,12 @@ func (c DiskStatsCollector) Collect(ch chan<- prometheus.Metric) {
 					break
 				}
 
-				m := Metric{desc: c.descs[i].desc, valueType: c.descs[i].valueType}
-				ch <- NewConstMetric(c.log, m, val, vol.PVC)
+				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, vol.PVC)
+				ch <- metric
 			}
 		}
 	}
-	ReportScrapeResult(c.log, ch, timeStart, "diskstats", true)
+
+	log.Debug("finished diskstats collector")
+	return nil
 }

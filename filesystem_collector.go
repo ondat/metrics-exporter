@@ -10,10 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
 )
+
+const FILE_SYSTEM_COLLECTOR_NAME = "filesystem"
 
 var stuckMounts = make(map[string]struct{})
 var stuckMountsMtx = &sync.Mutex{}
@@ -23,15 +25,22 @@ type filesystemLabels struct {
 }
 
 type FileSystemCollector struct {
-	log logr.Logger
+	deviceErrors Metric
 
-	descs []Metric
+	metrics []Metric
 }
 
-func NewFileSystemCollector(log logr.Logger) FileSystemCollector {
+func NewFileSystemCollector() FileSystemCollector {
 	return FileSystemCollector{
-		log: log,
-		descs: []Metric{
+		deviceErrors: Metric{
+			desc: prometheus.NewDesc(
+				prometheus.BuildFQName(ONDAT_NAMESPACE, FILE_SYSTEM_SUBSYSTEM, "device_error"),
+				"Whether an error occurred while getting statistics for the given device.",
+				fsLabels, nil,
+			),
+			valueType: prometheus.GaugeValue,
+		},
+		metrics: []Metric{
 			{
 				desc: prometheus.NewDesc(
 					prometheus.BuildFQName(ONDAT_NAMESPACE, FILE_SYSTEM_SUBSYSTEM, "size_bytes"),
@@ -84,87 +93,25 @@ func NewFileSystemCollector(log logr.Logger) FileSystemCollector {
 	}
 }
 
-func (c FileSystemCollector) Describe(ch chan<- *prometheus.Desc) {
-	// ch <- scrapeDurationMetric.desc
-	ch <- scrapeSuccessMetric.desc
+func (c FileSystemCollector) Name() string {
+	return FILE_SYSTEM_COLLECTOR_NAME
 }
 
-func (c FileSystemCollector) Collect(ch chan<- prometheus.Metric) {
-	c.log.Info("Starting fs metrics collector")
-	count := 0
-
-	timeStart := time.Now()
-
-	// All Ondat volumes fetched from the storageos container's API
-	// Cluster wide thus only one request is needed
-	// TODO both collectors are fetching the same data from the API
-	// this needs work
-	ondatVolumes, err := GetOndatVolumesAPI(c.log, apiSecretsPath)
-	if err != nil {
-		c.log.Error(err, "error contacting Ondat API")
-		ReportScrapeResult(c.log, ch, timeStart, "filesystem", false)
-		return
-	}
+func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
+	log.Debug("starting filesystem collector")
+	log = log.With("collector", FILE_SYSTEM_COLLECTOR_NAME)
 
 	// TODO consider skipping getting all fs mounted devices
 	// and fetch the data for each Ondat volume directly
-	mps, err := mountPointDetails(c.log)
+	mps, err := mountPointDetails(log)
 	if err != nil {
-		c.log.Info("error mountPointDetails")
-		return
+		log.Errorw("failed to read mounts", "error", err)
+		return err
 	}
 
 	for _, labels := range mps {
 		if !strings.HasPrefix(labels.device, "/var/lib/storageos/volumes") {
-			// level.Debug(c.logger).Log("msg", "Ignoring mount point", "mountpoint", labels.mountPoint)
 			continue
-		}
-
-		c.log.Info("processing mount", "device", labels.device, "mountPoint", labels.mountPoint)
-
-		stuckMountsMtx.Lock()
-		if _, ok := stuckMounts[labels.mountPoint]; ok {
-			ReportScrapeResult(c.log, ch, timeStart, "filesystem", false)
-			// TODO device error metric
-			c.log.Info("error mount stuck")
-
-			// level.Debug(c.logger).Log("msg", "Mount point is in an unresponsive state", "mountpoint", labels.mountPoint)
-			stuckMountsMtx.Unlock()
-			continue
-		}
-		stuckMountsMtx.Unlock()
-
-		// The success channel is used do tell the "watcher" that the stat
-		// finished successfully. The channel is closed on success.
-		success := make(chan struct{})
-		go stuckMountWatcher(labels.mountPoint, success, c.log)
-
-		buf := new(unix.Statfs_t)
-		err = unix.Statfs(labels.mountPoint, buf)
-		stuckMountsMtx.Lock()
-		close(success)
-		// If the mount has been marked as stuck, unmark it and log it's recovery.
-		if _, ok := stuckMounts[labels.mountPoint]; ok {
-			// level.Debug(c.logger).Log("msg", "Mount point has recovered, monitoring will resume", "mountpoint", labels.mountPoint)
-			delete(stuckMounts, labels.mountPoint)
-		}
-		stuckMountsMtx.Unlock()
-
-		if err != nil {
-			ReportScrapeResult(c.log, ch, timeStart, "filesystem", false)
-			// TODO device error metric
-			c.log.Error(err, "error parsing fs stats into buffer", "device", labels.device, "mountPoint", labels.mountPoint)
-
-			// level.Debug(c.logger).Log("msg", "Error on statfs() system call", "rootfs", rootfsFilePath(labels.mountPoint), "err", err)
-			continue
-		}
-
-		var ro float64
-		for _, option := range strings.Split(labels.options, ",") {
-			if option == "ro" {
-				ro = 1
-				break
-			}
 		}
 
 		// extract the volume ID from the mount
@@ -180,6 +127,53 @@ func (c FileSystemCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
+		log = log.With("pvc", pvc)
+		log.Debugw("processing mount", "device", labels.device, "mountpoint", labels.mountPoint)
+
+		stuckMountsMtx.Lock()
+		if _, ok := stuckMounts[labels.mountPoint]; ok {
+			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
+			log.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
+			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, labels.device, labels.fsType, labels.mountPoint)
+			ch <- metric
+
+			stuckMountsMtx.Unlock()
+			continue
+		}
+		stuckMountsMtx.Unlock()
+
+		// The success channel is used do tell the "watcher" that the stat
+		// finished successfully. The channel is closed on success.
+		success := make(chan struct{})
+		go stuckMountWatcher(labels.mountPoint, success, log)
+
+		buf := new(unix.Statfs_t)
+		err = unix.Statfs(labels.mountPoint, buf)
+		stuckMountsMtx.Lock()
+		close(success)
+		// If the mount has been marked as stuck, unmark it and log it's recovery.
+		if _, ok := stuckMounts[labels.mountPoint]; ok {
+			log.Debugw("mount point has recovered, monitoring will resume", "mountpoint", labels.mountPoint)
+			delete(stuckMounts, labels.mountPoint)
+		}
+		stuckMountsMtx.Unlock()
+
+		if err != nil {
+			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
+			log.Errorw("error on statfs() system call", "device", labels.device, "mountpoint", labels.mountPoint, "error", err)
+			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, labels.device, labels.fsType, labels.mountPoint)
+			ch <- metric
+			continue
+		}
+
+		var ro float64
+		for _, option := range strings.Split(labels.options, ",") {
+			if option == "ro" {
+				ro = 1
+				break
+			}
+		}
+
 		// TODO labels
 		for i, val := range []float64{
 			float64(buf.Blocks) * float64(buf.Bsize), // blocks * size per block = total space (bytes)
@@ -189,19 +183,21 @@ func (c FileSystemCollector) Collect(ch chan<- prometheus.Metric) {
 			float64(buf.Ffree),                       // total free inodes
 			ro,
 		} {
-			m := Metric{desc: c.descs[i].desc, valueType: c.descs[i].valueType}
-			ch <- NewConstMetric(c.log, m, val, pvc, labels.device, labels.fsType, labels.mountPoint)
+			metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, labels.device, labels.fsType, labels.mountPoint)
+			ch <- metric
 		}
-		count++
+		metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, labels.device, labels.fsType, labels.mountPoint)
+		ch <- metric
 	}
-	c.log.Info("finished fs metrics colletor", "mounts read", count)
-	ReportScrapeResult(c.log, ch, timeStart, "filesystem", true)
+
+	log.Debug("finished filesystem colletor")
+	return nil
 }
 
 // stuckMountWatcher listens on the given success channel and if the channel closes
 // then the watcher does nothing. If instead the timeout is reached, the
 // mount point that is being watched is marked as stuck.
-func stuckMountWatcher(mountPoint string, success chan struct{}, logger logr.Logger) {
+func stuckMountWatcher(mountPoint string, success chan struct{}, logger *zap.SugaredLogger) {
 	mountCheckTimer := time.NewTimer(time.Second * 5)
 	defer mountCheckTimer.Stop()
 	select {
@@ -221,7 +217,7 @@ func stuckMountWatcher(mountPoint string, success chan struct{}, logger logr.Log
 	}
 }
 
-func mountPointDetails(logger logr.Logger) ([]filesystemLabels, error) {
+func mountPointDetails(logger *zap.SugaredLogger) ([]filesystemLabels, error) {
 	file, err := os.Open("/proc/1/mounts")
 	if errors.Is(err, os.ErrNotExist) {
 		// Fallback to `/proc/mounts` if `/proc/1/mounts` is missing due hidepid.
