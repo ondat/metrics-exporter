@@ -9,8 +9,11 @@ It knows where and how to extract the relevant information about the Ondat volum
 </p>
 
 
-All the disk metrics are processed following the node_exporter's implementation
+All the disk metrics are processed following the node_exporter's implementation.
 
+We also include metrics about the scrape itself:
+- `ondat_scrape_collector_success`
+- `ondat_scrape_collector_duration_seconds`
 
 ## References
  - [Prometheus docs](https://prometheus.io/docs/introduction/overview/)

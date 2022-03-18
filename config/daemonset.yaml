@@ -1,8 +1,8 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
- name: monitor-test
- namespace: storageos
+  name: storageos-metrics-exporter
+  namespace: storageos
 spec:
  selector:
    matchLabels:
@@ -10,22 +10,24 @@ spec:
  template:
    metadata:
      labels:
-       app: storageos
+        app: storageos
+        category: metrics-exporter
    spec:
-     serviceAccountName: storageos-api-manager
-    #  securityContext:
-    #   fsGroup: 65532
+     serviceAccountName: storageos-api-manager # add its own or use default
      containers:
-      - name: monitor-test
-        image: docker.rickos.site/ricosorio/metrics-exporter:latest
-        imagePullPolicy: Always
+      - name: storageos-metrics-exporter
+        image: docker.rickos.site/ricosorio/metrics-exporter:latest # use storageos registry
+        imagePullPolicy: Always # revert to default
         volumeMounts:
          - mountPath: /var/lib/storageos
            name: state
+           readOnly: true
          - mountPath: /var/lib/kubelet
            name: kubelet-dir
+           readOnly: true
          - mountPath: /etc/storageos/secrets/api
            name: api-secret
+           readOnly: true
      volumes:
      - hostPath:
          path: /var/lib/storageos
