@@ -148,7 +148,7 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 		)
 		if err != nil {
 			// return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
-			// TODO add logging and continue instead of failing
+			// TODO add logging
 			continue
 		}
 

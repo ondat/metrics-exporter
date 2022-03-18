@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: metrics-exporter
+spec:
+ selector:
+    matchLabels:
+      app: storageos
+ template:
+    metadata:
+      labels:
+        app: storageos
+        category: metrics-exporter
+    spec:
+      containers:
+      - name: storageos-metrics-exporter
+        image: docker.rickos.site/ricosorio/metrics-exporter:latest # TODO use storageos registry
+        imagePullPolicy: Always # TODO revert to default
+        volumeMounts:
+          - mountPath: /var/lib/storageos
+            name: state
+            readOnly: true
+          - mountPath: /var/lib/kubelet
+            name: kubelet-dir
+            readOnly: true
+            mountPropagation: Bidirectional
+          - mountPath: /etc/storageos/secrets/api
+            name: api-secret
+            readOnly: true
+        securityContext:
+          privileged: true
+      volumes:
+      - hostPath:
+          path: /var/lib/storageos
+        name: state
+      - hostPath:
+          path: /var/lib/kubelet
+          type: Directory
+        name: kubelet-dir
+      - name: api-secret
+        secret:
+         secretName: storageos-api
+

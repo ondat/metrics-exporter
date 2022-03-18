@@ -1,5 +1,0 @@
-resources:
-- daemonset.yaml
-- service.yaml
-- service-monitor.yaml
-- prometheus-operator.yaml

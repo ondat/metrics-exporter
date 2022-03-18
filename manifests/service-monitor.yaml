@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-service-monitor
+  # may need the label "app: prometheus" when installed through helms
+spec:
+  endpoints:
+    - path: /metrics
+      port: metrics
+  selector:
+    matchLabels:
+      service-discovery: storageos-metrics-exporter
+  namespaceSelector:
+    matchNames:
+    - storageos

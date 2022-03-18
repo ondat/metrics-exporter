@@ -54,6 +54,7 @@ func main() {
 	}
 
 	loggerConfig := zap.NewProductionConfig()
+	loggerConfig.EncoderConfig.EncodeTime = zapcore.RFC3339NanoTimeEncoder
 	loggerConfig.Level.SetLevel(level)
 
 	logger, err := loggerConfig.Build()
@@ -70,7 +71,7 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewCollector(log, apiSecretsPathFlag, metricsCollectors))
+	prometheusRegistry.Register(NewCollectorGroup(log, apiSecretsPathFlag, metricsCollectors))
 
 	// k8s endpoints
 	http.HandleFunc("/healthz", healthz)

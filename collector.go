@@ -10,8 +10,8 @@ import (
 )
 
 type Collector interface {
-	Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error
 	Name() string
+	Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error
 }
 
 type CollectorGroup struct {
@@ -22,7 +22,7 @@ type CollectorGroup struct {
 	collectors []Collector
 }
 
-func NewCollector(log *zap.SugaredLogger, apiSecretsPath string, c []Collector) CollectorGroup {
+func NewCollectorGroup(log *zap.SugaredLogger, apiSecretsPath string, c []Collector) CollectorGroup {
 	return CollectorGroup{
 		log:            log,
 		apiSecretsPath: apiSecretsPath,
@@ -47,6 +47,8 @@ func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
+	// TODO returning here means no metrics at all
+	// confirm behaviour
 	if len(ondatVolumes) == 0 {
 		c.log.Debug("no Ondat volumes")
 		return

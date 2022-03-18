@@ -1,0 +1,11 @@
+namespace: storageos
+
+namePrefix: storageos-
+
+commonLabels:
+  app: storageos
+
+resources:
+- daemonset.yaml
+- service.yaml
+- service-monitor.yaml
