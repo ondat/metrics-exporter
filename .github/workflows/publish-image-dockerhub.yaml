@@ -1,0 +1,42 @@
+# Automatically push a new docker image into the dockerhub registry
+# Triggered on a push of a branch prefixed with "release/v" and tagged with "v*"
+name: Publish image to dockerhub registry
+
+on: [push]
+  # push:
+  #   tags:
+  #     - 'v*'
+
+jobs:
+  publish-image:
+    if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    runs-on: ubuntu-latest
+    name: Publish container image
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
+        with:
+          access_token: ${{ github.token }}
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.gitRef }}
+      - name: Login to container registry
+        uses: docker/login-action@v1
+        with:
+          registry: docker.io
+          username: ${{ secrets.DH_USERNAME }}
+          password: ${{ secrets.DH_PASSWORD }}
+      - name: Set image env vars
+        # Refer to https://stackoverflow.com/a/58178121 for git tag extraction.
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+          echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
+          echo $VERSION
+          echo ${{ env.VERSION }}
+          echo $IMAGE
+          echo ${{ env.IMAGE }}
+      - name: Build image
+        run: make docker-build
+      # - name: Push image
+      #   run: make docker-push

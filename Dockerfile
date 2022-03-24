@@ -13,7 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o metrics-exporter .
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 WORKDIR /
-ARG VERSION=v0.1.0
+ARG VERSION=v0.0.1
 LABEL name="Ondat Metrics Exporter" \
     vendor="Ondat" \
     url="https://docs.ondat.com" \
