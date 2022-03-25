@@ -47,4 +47,4 @@ jobs:
       # - name: Push image
       #   run: make docker-push
 
-      # TODO img tagged 'v*' and another 'latest'
+      # TODO img tagged 'v*' and another 'latest'?
