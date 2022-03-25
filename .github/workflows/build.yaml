@@ -72,7 +72,7 @@ jobs:
           IGNORE_GITIGNORED_FILES: true
           LINTER_RULES_PATH: .github/linters-cfg # markdown and yaml cfg files used
   build:
-    name: Build
+    name: Build binary
     runs-on: ubuntu-18.04
     needs: [golangci, superlinter]
     steps:
