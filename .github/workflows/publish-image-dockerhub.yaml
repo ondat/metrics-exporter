@@ -6,9 +6,8 @@ name: Publish image to dockerhub registry
 on:
   workflow_run:
     workflows: ["Build"]
-    branches: ['release/v*']
-    types: 
-      - completed
+    branches: ['release/v**']
+    types: [completed]
 
 jobs:
   publish-image:
