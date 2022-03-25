@@ -59,7 +59,7 @@ bundle: ## build the install bundle with kustomize
 	kustomize build manifests > manifests/bundle.yaml
 
 .PHONY: docker-build
-docker-build: test ## Build docker image.
+docker-build: ## Build docker image.
 	docker build -t ${IMAGE} --build-arg VERSION=$(VERSION) .
 
 ##@ Publish
