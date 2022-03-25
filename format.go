@@ -26,13 +26,6 @@ const (
 	SCRAPE_SUBSYSTEM = "scrape"
 )
 
-// Metric is a wrapper over prometheus types (desc and type) defining a
-// standalone metric
-type Metric struct {
-	desc      *prometheus.Desc
-	valueType prometheus.ValueType
-}
-
 var (
 	// labels present in all disk metrics to identify the PVC
 	pvcLabels = []string{"pvc"}
@@ -65,3 +58,10 @@ var (
 		valueType: prometheus.GaugeValue,
 	}
 )
+
+// Metric is a wrapper over prometheus types (desc and type) defining a
+// standalone metric
+type Metric struct {
+	desc      *prometheus.Desc
+	valueType prometheus.ValueType
+}

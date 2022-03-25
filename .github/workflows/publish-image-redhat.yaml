@@ -14,23 +14,21 @@ env:
 jobs:
   publish-image:
     # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
-    runs-on: ubuntu-latest
-    name: Publish container image
+    runs-on: ubuntu-18.04
+    name: Publish image
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.inputs.gitRef }}
-      - name: Login to container registry
+      - name: Login to registry
         uses: docker/login-action@v1
         with:
           registry: scan.connect.redhat.com
-          username: ${{ secrets.RH_USERNAME }}
-          password: ${{ secrets.RH_TOKEN }}
+          username: ${{ secrets.RED_HAT_QUAY_CLI_USERNAME }}
+          password: ${{ secrets.RED_HAT_QUAY_CLI_PASSWORD }}
       - name: Set image env vars
         # Refer to https://stackoverflow.com/a/58178121 for git tag extraction.
         run: |

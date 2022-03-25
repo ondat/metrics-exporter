@@ -1,0 +1,30 @@
+# configure golangci-lint
+# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+run:
+  skip-files: 
+    - zz_generated*
+  timeout: 3m
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+      - dupl
+      - gosec
+      - goconst
+    
+linters:
+  disable: 
+    - typecheck
+  enable:
+    - nilerr
+    - whitespace
+    - gofmt
+    - misspell
+
+linters-settings:
+  govet:
+    # report about shadowed variables
+    check-shadowing: false
+  gosimple:
+    checks: [ "-S1019" ] 

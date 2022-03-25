@@ -14,7 +14,7 @@ jobs:
         uses: styfle/cancel-workflow-action@0.9.1
         with:
           access_token: ${{ github.token }}
-      - name: Deps
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y build-essential
@@ -23,17 +23,16 @@ jobs:
         uses: actions/setup-go@v2
         with:
          go-version: 1.17
-
-      - uses: actions/checkout@v2
-
-      - name: golangci-lint
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:
           version: v1.42.1
-          args: -c=".github/linters/.golangci.yml"
-  build:
+          args: -c=".github/linters-cfg/.golangci.yml"
+  superlinter:
     name: Super Linter (non-Go)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -44,10 +43,8 @@ jobs:
         with:
           # Full git history is needed to get a proper list of changed files within `super-linter`
           fetch-depth: 0
-
-      # Run Linter against code base #
-      - name: super-linter
-        uses: github/super-linter/slim@v4 # slim image has - 2gb and excludes support for languages we don't use
+      - name: Run linter
+        uses: github/super-linter/slim@v4 # slim image has -2gb and excludes support for languages we don't use
         env:
           VALIDATE_ALL_CODEBASE: false # only new or edited files
           FILTER_REGEX_EXCLUDE: vendor/* # avoid linting deps
@@ -57,3 +54,5 @@ jobs:
           VALIDATE_BASH: true
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GITIGNORED_FILES: true
+          LINTER_RULES_PATH: .github/linters-cfg # markdown and yaml cfg files used
