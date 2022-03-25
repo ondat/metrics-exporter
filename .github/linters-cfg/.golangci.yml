@@ -1,30 +1,42 @@
 # configure golangci-lint
-# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
-run:
-  skip-files: 
-    - zz_generated*
-  timeout: 3m
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-      - dupl
-      - gosec
-      - goconst
-    
+# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml or examples
+# see https://golangci-lint.run/usage/linters for list of linters
 linters:
-  disable: 
-    - typecheck
   enable:
     - nilerr
     - whitespace
     - gofmt
     - misspell
+    - decorder
+    - forbidigo
+    - asciicheck
+
+issues:
+  exclude-rules:
+    # exclude rules on test files
+    - path: _test\.go
+      linters:
+      - dupl
+      - goconst
 
 linters-settings:
   govet:
-    # report about shadowed variables
+    # Report about shadowed variables
     check-shadowing: false
   gosimple:
-    checks: [ "-S1019" ] 
+    # Select the Go version to target.
+    go: "1.17"
+    checks: [ "-S1019" ]
+  decorder:
+    # Required order of `type`, `const`, `var` and `func` declarations inside a file.
+    disable-dec-order-check: false
+    dec-order:
+      - const
+      - var
+      - type
+      - func
+  forbidigo:
+    # Forbid the following identifiers (list of regexp).
+    forbid:
+      - ^print.*(# Do not commit print statements)?
+      - ^fmt\.Print.*(# Do not commit print statements)?

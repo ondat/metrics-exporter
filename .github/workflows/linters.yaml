@@ -28,7 +28,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.42.1
+          version: latest
           args: -c=".github/linters-cfg/.golangci.yml"
   superlinter:
     name: Super Linter (non-Go)

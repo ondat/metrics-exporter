@@ -36,36 +36,35 @@ help: ## Display this help.
 
 ##@ Development
 
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
-.PHONY: vet
-vet: ## Run go vet against code.
-	go vet ./...
+.PHONY: lint
+lint:
+	golangci-lint run --config .github/linters-cfg/.golangci.yml
 
 .PHONY: test
-test: fmt vet  ## Run tests.
+test: lint  ## Run tests.
 	go test ./...
 
 ##@ Build
 
 .PHONY: build
-build: fmt vet ## Build the binary.
+build: lint ## Build the binary.
 	go build -o bin/metrics-exporter .
 
 .PHONY: run
-run: fmt vet ## Run it from your host.
+run: ## Run it from your host.
 	go run .
+
+.PHONY: bundle
+bundle: ## build the install bundle with kustomize
+	kustomize build manifests > manifests/bundle.yaml
 
 .PHONY: docker-build
 docker-build: test ## Build docker image.
 	docker build -t ${IMAGE} --build-arg VERSION=$(VERSION) .
 
+##@ Publish
+
 .PHONY: docker-push
 docker-push: ## Push docker image.
 	docker push ${IMAGE}
 
-.PHONY: bundle
-bundle: ## build the install bundle with kustomize
-	kustomize build manifests > manifests/bundle.yaml
