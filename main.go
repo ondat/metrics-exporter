@@ -62,7 +62,7 @@ func main() {
 		log.Printf("failed to build logger from desired config: %s\n", err.Error())
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 	log := logger.Sugar()
 
 	metricsCollectors := []Collector{
@@ -71,7 +71,7 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
-	prometheusRegistry.Register(NewCollectorGroup(log, apiSecretsPathFlag, metricsCollectors))
+	_ = prometheusRegistry.Register(NewCollectorGroup(log, apiSecretsPathFlag, metricsCollectors))
 
 	// k8s endpoints
 	http.HandleFunc("/healthz", healthz)
@@ -98,7 +98,7 @@ func main() {
 			Title:           "Metrics exporter",
 			MetricsEndpoint: endpoint,
 		}
-		templ.Execute(w, &data)
+		_ = templ.Execute(w, &data)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 	}))
