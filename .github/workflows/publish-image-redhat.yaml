@@ -3,28 +3,14 @@ name: Publish image to redhat registry
 # Automatically push a new docker image into the redhat registry
 # Triggered on a push of a branch prefixed with "release/v" and tagged with "v*"
 
-on:
-  workflow_dispatch:
-    inputs:
-      gitRef:
-        description: The git branch, tag or SHA to build the image from.
-        required: true
-      imageTag:
-        description: Image tag, e.g. `v1.0.0`.
-        required: true
-    secrets:
-      ACTIONS_TOKEN:
-        required: true
-  # push:
-  #   tags:
-  #     - 'v*'
+on: push
 
 env:
   VERSION_2: ${GITHUB_REF#refs/*/}
 
 jobs:
   publish-image:
-    # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    if: startsWith(github.event.base_ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image
     steps:

@@ -12,12 +12,6 @@ on:
       imageTag:
         description: Image tag, e.g. `v1.0.0`.
         required: true
-    secrets:
-      ACTIONS_TOKEN:
-        required: true
-  # push:
-  #   tags:
-  #     - 'v*'
 
 jobs:
   publish-image:
