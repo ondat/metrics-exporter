@@ -18,4 +18,4 @@ jobs:
       - name: Build bundle.yaml
         run: make bundle
       - name: Check diff
-        run: git diff --exit-code
+        run: git diff --exit-code -- manifests/bundle.yaml

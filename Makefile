@@ -41,13 +41,13 @@ lint:
 	golangci-lint run --config .github/linters-cfg/.golangci.yml
 
 .PHONY: test
-test: lint  ## Run tests.
+test:  ## Run tests.
 	go test ./...
 
 ##@ Build
 
 .PHONY: build
-build: lint ## Build the binary.
+build: ## Build the binary.
 	go build -o bin/metrics-exporter .
 
 .PHONY: run
