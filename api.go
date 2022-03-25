@@ -25,8 +25,6 @@ const (
 	DefaultPort = 5705
 	// DefaultScheme is used for api endpoint.
 	DefaultScheme = "http"
-	// TLSScheme scheme can be used if the api endpoint has TLS enabled.
-	TLSScheme = "https"
 	// PvcLabel is the name of the label where we find the friendly PVC name
 	// associated to the ondat volume
 	PvcLabel = "csi.storage.k8s.io/pvc/name"

@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
       - name: storageos-metrics-exporter
-        image: docker.rickos.site/ricosorio/metrics-exporter:latest # TODO use storageos registry
-        imagePullPolicy: Always # TODO revert to default
+        image: metrics-exporter:latest
+        imagePullPolicy: IfNotPresent
         volumeMounts:
           - mountPath: /var/lib/storageos
             name: state

@@ -24,13 +24,13 @@ brw-rw---- 1 root disk      8, 32 Feb 25 16:07 v.c3561d79-459f-4e5d-b5bb-f71ae7b
 brw-rw---- 1 root disk      8, 48 Feb 25 15:18 v.78e88095-e690-49be-b0f3-3f735ef084a5
 `,
 			expectedVolumes: []*Volume{
-				&Volume{
+				{
 					Major: 8,
 					Minor: 32,
 					ID:    "c3561d79-459f-4e5d-b5bb-f71ae7b38672",
 					PVC:   "",
 				},
-				&Volume{
+				{
 					Major: 8,
 					Minor: 48,
 					ID:    "78e88095-e690-49be-b0f3-3f735ef084a5",

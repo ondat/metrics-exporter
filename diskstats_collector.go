@@ -15,13 +15,13 @@ const (
 )
 
 // DiskStatsCollector implements the prometheus Collector interface
-// Its sole responsability is gathering metrics on PVCs
+// Its sole responsibility is gathering metrics on PVCs
 type DiskStatsCollector struct {
 	// info of all the scraped PVCs
 	info Metric
 
 	// all PVC metrics we gather from diskstats
-	// usefull as a standalone variable to iterate over and index match with diskstats's content
+	// useful as a standalone variable to iterate over and index match with diskstats's content
 	// order MUST match the columns in the diskstats file
 	metrics []Metric
 }
