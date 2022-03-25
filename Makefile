@@ -41,13 +41,13 @@ lint:
 	golangci-lint run --config .github/linters-cfg/.golangci.yml
 
 .PHONY: test
-test: lint  ## Run tests.
+test:  ## Run tests.
 	go test ./...
 
 ##@ Build
 
 .PHONY: build
-build: lint ## Build the binary.
+build: ## Build the binary.
 	go build -o bin/metrics-exporter .
 
 .PHONY: run
@@ -59,7 +59,7 @@ bundle: ## build the install bundle with kustomize
 	kustomize build manifests > manifests/bundle.yaml
 
 .PHONY: docker-build
-docker-build: test ## Build docker image.
+docker-build: ## Build docker image.
 	docker build -t ${IMAGE} --build-arg VERSION=$(VERSION) .
 
 ##@ Publish
