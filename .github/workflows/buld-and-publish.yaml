@@ -109,20 +109,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
 
-      - name: Set image env vars
+      - name: Set image env vars 1
         run: echo $GITHUB_BASE_REF
-      - name: Set image env vars
+      - name: Set image env vars 2
         run: echo $GITHUB_REF
-      - name: Set image env vars
-        run: echo "Extract res ${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}"
-      - name: Set image env vars
+      - name: Set image env vars 3
+        run: echo ${GITHUB_REF#refs/}
+      - name: Set image env vars 4
+        run: echo "Extract res ${GITHUB_BASE_REF:-${GITHUB_REF}}"
+      - name: Set image env vars 5
         run: echo "VERSION=${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}" >> $GITHUB_ENV
-      - name: Set image env vars
+      - name: Set image env vars 6
         run: echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
-      - name: Set image env vars
+      - name: Set image env vars 7
         run: cat $GITHUB_ENV
-      - name: Set image env vars
-        run: echo "base_ref ${{ github.event.base_ref }}"
+      # github.event.base_ref - nothing
 
       - name: Build image
         run: make docker-build
