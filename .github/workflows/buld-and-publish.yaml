@@ -109,10 +109,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
 
-      - name: Set image env vars 5
-        run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
-      - name: Set image env vars 6
-        run: echo "IMAGE=metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
+      - name: SetENV vars
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
+          echo "IMAGE=metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Set image env vars 7
         run: cat $GITHUB_ENV
       # github.event.base_ref - nothing
