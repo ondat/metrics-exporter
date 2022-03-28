@@ -108,15 +108,10 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
-
-      - name: SetENV vars
-        run: |
-          echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
-          echo "IMAGE=metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
-      - name: Set image env vars 7
-        run: cat $GITHUB_ENV
-      # github.event.base_ref - nothing
-
+      - name: Set env var VERSION
+        run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
+      - name: Set env var IMAGE
+        run: echo "IMAGE=metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Build image
         run: make docker-build
       # - name: Push image
