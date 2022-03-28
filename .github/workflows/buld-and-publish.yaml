@@ -114,7 +114,7 @@ jobs:
       - name: Set image env vars 2
         run: echo $GITHUB_REF
       - name: Set image env vars 3
-        run: echo ${GITHUB_REF#refs/}
+        run: echo ${GITHUB_REF#refs/heads/release/}
       - name: Set image env vars 4
         run: echo "Extract res ${GITHUB_BASE_REF:-${GITHUB_REF}}"
       - name: Set image env vars 5
