@@ -14,6 +14,9 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-18.04
     name: Publish image
+    env:
+      VERSION: GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}
+      VERSION2: ${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}
     steps:
       - name: Cancel Previous Runs
         uses: styfle/cancel-workflow-action@0.9.1
@@ -31,11 +34,16 @@ jobs:
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
       - name: Set image env vars
         run: |
-          echo "VERSION=${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}" >> $GITHUB_ENV
           echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
-          echo "$VERSION"
-          echo "$IMAGE"
-          echo "$GITHUB_CONTEXT"
+          echo $IMAGE
+          echo $VERSION
+          echo $VERSION2
+          echo ${IMAGE}
+          echo ${VERSION}
+          echo -$VERSION2-
+          echo Why don't you work
+      - name: Print context
+        run: echo "$GITHUB_CONTEXT"
       - name: Build image
         run: make docker-build
       # - name: Push image
