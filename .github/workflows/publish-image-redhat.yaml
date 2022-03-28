@@ -4,14 +4,10 @@ name: Publish image to redhat registry
 # Triggered on a push of a branch prefixed with "release/v" and tagged with "v*"
 
 on:
-  workflow_dispatch:
-    inputs:
-      gitRef:
-        description: The git branch, tag or SHA to build the image from.
-        required: true
-      imageTag:
-        description: Image tag, e.g. `v1.0.0`.
-        required: true
+  workflow_run:
+    workflows: ["Build"]
+    branches: ['release/v**']
+    types: [completed]
 
 env:
   VERSION_2: ${GITHUB_REF#refs/*/}
@@ -41,11 +37,8 @@ jobs:
         run: |
           echo "VERSION=${{ github.event.inputs.imageTag }}" >> $GITHUB_ENV
           echo "IMAGE=scan.connect.redhat.com/${{ secrets.OSPID }}/metrics-exporter:${VERSION}" >> $GITHUB_ENV
-          echo $VERSION
           echo ${{ env.VERSION }}
-          echo $IMAGE
           echo ${{ env.IMAGE }}
-          echo $IMAGE_2
           echo ${{ env.IMAGE_2 }}
       - name: Build image
         run: make docker-build
