@@ -35,9 +35,7 @@ jobs:
         run: |
           echo "VERSION=${{ github.event.inputs.imageTag }}" >> $GITHUB_ENV
           echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
-          echo $VERSION
           echo ${{ env.VERSION }}
-          echo $IMAGE
           echo ${{ env.IMAGE }}
       - name: Build image
         run: make docker-build
