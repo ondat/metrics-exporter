@@ -7,10 +7,6 @@ jobs:
     name: Bundle.yaml is up to date
     runs-on: ubuntu-18.04
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Install kustomize
         run: curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
       - name: Checkout code
@@ -63,10 +59,23 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GITIGNORED_FILES: true
           LINTER_RULES_PATH: .github/linters-cfg # markdown and yaml cfg files used
+  test:
+    name: Run unit tests
+    runs-on: ubuntu-18.04
+    needs: [golangci, superlinter]
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+         go-version: 1.17
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run unit tests
+        run: make test
   build:
     name: Build binary
     runs-on: ubuntu-18.04
-    needs: [golangci, superlinter]
+    needs: [test]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -77,7 +86,7 @@ jobs:
       - name: Build binary
         run: make build
   publish-image-docker:
-    # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    if: startsWith(github.event.ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image to DockerHub
     needs: build
@@ -85,7 +94,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.gitRef }}
+          ref: ${{ github.event.ref }}
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
@@ -101,6 +110,7 @@ jobs:
       # - name: Push image
       #   run: make docker-push
   publish-image-redhat:
+    # if: startsWith(github.event.ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image to RedHat
     needs: build
@@ -108,7 +118,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.gitRef }}
+          ref: ${{ github.event.ref }}
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
