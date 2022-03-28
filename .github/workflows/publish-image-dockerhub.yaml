@@ -38,8 +38,8 @@ jobs:
           echo ${{ env.IMAGE }}
           GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
           echo ${{ GIT_BRANCH }}
-          echo ${ GIT_BRANCH }
           echo "$GIT_BRANCH"
+          echo "$GITHUB_CONTEXT"
       - name: Build image
         run: make docker-build
       # - name: Push image
