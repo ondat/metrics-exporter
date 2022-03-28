@@ -30,15 +30,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
       - name: Set image env vars
-        # Refer to https://stackoverflow.com/a/58178121 for git tag extraction.
         run: |
-          echo "VERSION=${{ github.event.inputs.imageTag }}" >> $GITHUB_ENV
+          echo "VERSION=${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}" >> $GITHUB_ENV
           echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
-          echo ${{ env.VERSION }}
-          echo ${{ env.IMAGE }}
-          GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
-          echo ${{ GIT_BRANCH }}
-          echo "$GIT_BRANCH"
+          echo "$VERSION"
+          echo "$IMAGE"
           echo "$GITHUB_CONTEXT"
       - name: Build image
         run: make docker-build
