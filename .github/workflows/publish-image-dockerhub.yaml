@@ -37,6 +37,8 @@ jobs:
           echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
           echo ${{ env.VERSION }}
           echo ${{ env.IMAGE }}
+          GIT_BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF#refs/heads/}}
+          echo $GIT_BRANCH
       - name: Build image
         run: make docker-build
       # - name: Push image
