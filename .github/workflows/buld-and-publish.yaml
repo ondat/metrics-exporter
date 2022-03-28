@@ -24,10 +24,6 @@ jobs:
     runs-on: ubuntu-18.04
     needs: bundle-up-to-date
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Install dependencies
         run: |
           sudo apt update
@@ -49,10 +45,6 @@ jobs:
     runs-on: ubuntu-18.04
     needs: bundle-up-to-date
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Checkout Code
         uses: actions/checkout@v2
         with:
@@ -76,10 +68,6 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [golangci, superlinter]
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -91,13 +79,9 @@ jobs:
   publish-image-docker:
     # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
-    name: Publish image
+    name: Publish image to DockerHub
     needs: build
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Checkout code
         uses: actions/checkout@v2
         with:
@@ -118,13 +102,9 @@ jobs:
       #   run: make docker-push
   publish-image-redhat:
     runs-on: ubuntu-18.04
-    name: Publish image
+    name: Publish image to RedHat
     needs: build
     steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.9.1
-        with:
-          access_token: ${{ github.token }}
       - name: Checkout code
         uses: actions/checkout@v2
         with:
