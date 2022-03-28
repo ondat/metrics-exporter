@@ -41,9 +41,9 @@ jobs:
       - name: Set image env vars
         run: echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
       - name: Set image env vars
-        run: echo $GITHUB_ENV
+        run: cat $GITHUB_ENV
       - name: Set image env vars
-        run: echo "gitRef ${{ github.event.inputs.gitRef }}"
+        run: echo "base_ref ${{ github.event.base_ref }}"
 
       - name: Build image
         run: make docker-build
