@@ -29,16 +29,22 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
+
       - name: Set image env vars
-        run: |
-          echo $GITHUB_BASE_REF
-          echo $GITHUB_REF
-          echo ${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}
-          echo "VERSION=${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}" >> $GITHUB_ENV
-          echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
-          echo $GITHUB_ENV
-      - name: Print context
-        run: echo "$GITHUB_CONTEXT"
+        run: echo $GITHUB_BASE_REF
+      - name: Set image env vars
+        run: echo $GITHUB_REF
+      - name: Set image env vars
+        run: echo "Extract res ${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}"
+      - name: Set image env vars
+        run: echo "VERSION=${GITHUB_BASE_REF#release/:-${GITHUB_REF#refs/heads/release/}}" >> $GITHUB_ENV
+      - name: Set image env vars
+        run: echo "IMAGE=metrics-exporter:${VERSION}" >> $GITHUB_ENV
+      - name: Set image env vars
+        run: echo $GITHUB_ENV
+      - name: Set image env vars
+        run: echo "gitRef ${{ github.event.inputs.gitRef }}"
+
       - name: Build image
         run: make docker-build
       # - name: Push image
