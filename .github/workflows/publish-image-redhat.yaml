@@ -14,7 +14,7 @@ env:
 
 jobs:
   publish-image:
-    if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-18.04
     name: Publish image
     steps:
