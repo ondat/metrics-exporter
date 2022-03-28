@@ -77,7 +77,7 @@ jobs:
       - name: Build binary
         run: make build
   publish-image-docker:
-    # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    if: startsWith(github.event.ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image to DockerHub
     needs: build
@@ -101,6 +101,7 @@ jobs:
       # - name: Push image
       #   run: make docker-push
   publish-image-redhat:
+    # if: startsWith(github.event.ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image to RedHat
     needs: build
@@ -109,6 +110,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: ${{ github.event.inputs.gitRef }}
+      - name: Set env var 1
+        run: echo "event.ref ${{ github.event.ref }}"
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
