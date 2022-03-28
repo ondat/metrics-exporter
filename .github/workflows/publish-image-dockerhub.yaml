@@ -41,6 +41,7 @@ jobs:
           echo ${IMAGE}
           echo ${VERSION}
           echo -$VERSION2-
+          echo Why don't you work
       - name: Print context
         run: echo "$GITHUB_CONTEXT"
       - name: Build image
