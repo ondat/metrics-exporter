@@ -1,6 +1,9 @@
-# Target docker image URL for building/pushing actions.
-IMAGE ?= storageos/metrics-exporter:latest
+# Placeholder environment variables. These should be present when building
+# and pushing new docker images within the context of github actions.
+# Target version
 VERSION ?= 0.0.1
+# Target docker image URL for building/pushing actions.
+IMAGE ?= storageos/metrics-exporter:${VERSION}
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -44,15 +47,15 @@ lint:
 test:  ## Run tests.
 	go test ./...
 
+.PHONY: run
+run: ## Run it from your host.
+	go run .
+
 ##@ Build
 
 .PHONY: build
 build: ## Build the binary.
 	go build -o bin/metrics-exporter .
-
-.PHONY: run
-run: ## Run it from your host.
-	go run .
 
 .PHONY: bundle
 bundle: ## build the install bundle with kustomize
