@@ -81,7 +81,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.gitRef }}
+          ref: ${{ github.event.ref }}
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
@@ -105,9 +105,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.inputs.gitRef }}
-      - name: Set env var 1
-        run: echo "event.ref ${{ github.event.ref }}"
+          ref: ${{ github.event.ref }}
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
