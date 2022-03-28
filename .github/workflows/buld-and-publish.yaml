@@ -1,4 +1,4 @@
-name: Build
+name: Build and publish
 
 on: [ push ]
 
@@ -89,7 +89,7 @@ jobs:
       - name: Build binary
         run: make build
   publish-image:
-    if: startsWith(github.event.base_ref, 'refs/heads/release/v')
+    # if: startsWith(github.event.base_ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image
     needs: build
