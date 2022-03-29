@@ -8,7 +8,7 @@ makes it available as a Prometheus scraping endpoint.
 Disks not owned by Ondat are ignored.
 
 <p align="center">
-    <img src="https://user-images.githubusercontent.com/26963810/158974781-f06883cc-0bdc-4c90-b24b-22da61b1cab7.png"
+    <img src="https://user-images.githubusercontent.com/26963810/160568112-1f1f6929-9fd8-428f-b03b-c7c6fdf965d2.png"
          alt="preview-overview-architecture" />
 </p>
 
