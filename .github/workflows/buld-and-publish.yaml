@@ -122,14 +122,14 @@ jobs:
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
-        run: echo "IMAGE=scan.connect.redhat.com/${{ secrets.OSPID }}/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
+        run: echo "IMAGE=scan.connect.redhat.com/${{ secrets.metrics-exporter_REDHAT_OSPID }}/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Build image
         run: make docker-build
       - name: Login to registry
         uses: docker/login-action@v1
         with:
           registry: scan.connect.redhat.com
-          username: ${{ secrets.RED_HAT_QUAY_CLI_USERNAME }}
-          password: ${{ secrets.RED_HAT_QUAY_CLI_PASSWORD }}
-      # - name: Push image
-      #   run: docker docker-push
+          username: ${{ secrets.metrics-exporter_REDHAT_USERNAME }}
+          password: ${{ secrets.metrics-exporter_REDHAT_TOKEN }}
+      - name: Push image
+        run: docker docker-push
