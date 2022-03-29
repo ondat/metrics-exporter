@@ -2,8 +2,10 @@
 
 PVC metrics exporter designed to run alongside an Ondat instance.
 
-It knows where and how to extract the relevant information about the Ondat volumes and 
-makes it available as a Prometheus endpoint. Disks not owned by Ondat are ignored.
+It knows how to extract the relevant information about Ondat volumes and
+makes it available as a Prometheus scraping endpoint.
+
+Disks not owned by Ondat are ignored.
 
 <p align="center">
     <img src="https://user-images.githubusercontent.com/26963810/158974781-f06883cc-0bdc-4c90-b24b-22da61b1cab7.png"
