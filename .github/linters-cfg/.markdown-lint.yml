@@ -14,3 +14,6 @@ MD029: false
 MD013:
   # Number of characters
   line_length: 140
+
+# MD033/no-inline-html - Inline HTML not allowed
+MD033: false
