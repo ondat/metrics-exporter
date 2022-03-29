@@ -107,10 +107,10 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_CLI_USERNAME }}
           password: ${{ secrets.DOCKERHUB_CLI_PASSWORD }}
-      # - name: Push image
-      #   run: make docker-push
+      - name: Push image
+        run: make docker-push
   publish-image-redhat:
-    # if: startsWith(github.event.ref, 'refs/heads/release/v')
+    if: startsWith(github.event.ref, 'refs/heads/release/v')
     runs-on: ubuntu-18.04
     name: Publish image to RedHat
     needs: build
