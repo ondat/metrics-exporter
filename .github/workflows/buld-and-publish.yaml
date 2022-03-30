@@ -123,9 +123,13 @@ jobs:
       - name: Set env var VERSION
         run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
-        run: echo "IMAGE=scan.connect.redhat.com/${{ secrets.REDHAT_OSPID }}/storageos/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
+        run: echo "IMAGE=storageos/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
+      - name: Set env var REDHAT_IMAGE_TAG
+        run: echo "REDHAT_IMAGE_TAG=scan.connect.redhat.com/${{ secrets.REDHAT_OSPID }}/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Build image
         run: make docker-build
+      - name: Tag image
+        run: docker tag ${{ env.IMAGE }} ${{ env.REDHAT_IMAGE_TAG }}
       - name: Login to registry
         uses: docker/login-action@v1
         with:
@@ -134,4 +138,4 @@ jobs:
           password: ${{ secrets.REDHAT_TOKEN }}
           logout: true
       - name: Push image
-        run: make docker-push
+        run: make docker-push IMAGE=${{ env.REDHAT_IMAGE_TAG }}
