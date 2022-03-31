@@ -33,7 +33,7 @@ spec:
         category: metrics-exporter
     spec:
       containers:
-      - image: metrics-exporter:latest
+      - image: storageos/metrics-exporter:v0.1.1
         imagePullPolicy: IfNotPresent
         name: storageos-metrics-exporter
         securityContext:

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: storageos-metrics-exporter
-        image: metrics-exporter:latest
+        image: storageos/metrics-exporter:v0.1.1
         imagePullPolicy: IfNotPresent
         volumeMounts:
           - mountPath: /var/lib/storageos
