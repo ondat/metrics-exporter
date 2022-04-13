@@ -1,6 +1,10 @@
 name: Build and publish
 
-on: [ push ]
+on:
+  push:
+    branches:
+      - '**'
+      - '!main'
 
 jobs:
   bundle-up-to-date:  
@@ -50,7 +54,7 @@ jobs:
         uses: github/super-linter/slim@v4 # slim image has -2gb and excludes support for languages we don't use
         env:
           VALIDATE_ALL_CODEBASE: false # only new or edited files
-          FILTER_REGEX_EXCLUDE: vendor/* # avoid linting deps
+          FILTER_REGEX_EXCLUDE: vendor/*
           VALIDATE_MARKDOWN: true
           VALIDATE_SHELL_SHFMT: true
           VALIDATE_YAML: true
@@ -58,8 +62,8 @@ jobs:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GITIGNORED_FILES: true
-          LINTER_RULES_PATH: .github/linters-cfg # markdown and yaml cfg files used
-  test:
+          LINTER_RULES_PATH: .github/linters-cfg
+  tests:
     name: Run unit tests
     runs-on: ubuntu-18.04
     needs: [golangci, superlinter]
@@ -75,7 +79,7 @@ jobs:
   build:
     name: Build binary
     runs-on: ubuntu-18.04
-    needs: [test]
+    needs: [tests]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
