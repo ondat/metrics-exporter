@@ -60,22 +60,3 @@ spec:
       - name: api-secret
         secret:
           secretName: storageos-api
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  labels:
-    app: storageos
-  name: storageos-metrics-service-monitor
-  namespace: storageos
-spec:
-  endpoints:
-  - interval: 15s
-    path: /metrics
-    port: metrics
-  namespaceSelector:
-    matchNames:
-    - storageos
-  selector:
-    matchLabels:
-      service-discovery: storageos-metrics-exporter
