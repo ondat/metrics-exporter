@@ -143,3 +143,15 @@ jobs:
           logout: true
       - name: Push image
         run: make docker-push IMAGE=${{ env.REDHAT_IMAGE_TAG }}
+  github-release:
+    runs-on: ubuntu-18.04
+    name: GitHub release
+    needs: build
+    if: startsWith(github.event.ref, 'refs/heads/release/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: manifest/bundle.yaml
