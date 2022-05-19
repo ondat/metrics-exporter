@@ -1,9 +1,9 @@
 # Placeholder environment variables. These should be present when building
 # and pushing new docker images within the context of github actions.
 # Target version
-VERSION ?= develop
+VERSION ?= 0.1.2
 # Target docker image URL for building/pushing actions.
-IMAGE ?= docker.rickos.site/ricosorio/metrics-exporter:${VERSION}
+IMAGE ?= storageos/metrics-exporter:${VERSION}
 
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
