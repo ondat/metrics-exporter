@@ -1,16 +1,10 @@
 # Placeholder environment variables. These should be present when building
 # and pushing new docker images within the context of github actions.
 # Target version
-VERSION ?= 0.0.1
+VERSION ?= develop
 # Target docker image URL for building/pushing actions.
-IMAGE ?= storageos/metrics-exporter:${VERSION}
+IMAGE ?= docker.rickos.site/ricosorio/metrics-exporter:${VERSION}
 
-# Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
-ifeq (,$(shell go env GOBIN))
-GOBIN=$(shell go env GOPATH)/bin
-else
-GOBIN=$(shell go env GOBIN)
-endif
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -44,17 +38,17 @@ lint:
 	golangci-lint run --config .github/linters-cfg/.golangci.yml
 
 .PHONY: test
-test:  ## Run tests.
+test:
 	go test ./...
 
 .PHONY: run
-run: ## Run it from your host.
+run:
 	go run .
 
 ##@ Build
 
 .PHONY: build
-build: ## Build the binary.
+build:
 	go build -o bin/metrics-exporter .
 
 .PHONY: bundle
@@ -62,12 +56,12 @@ bundle: ## build the install bundle with kustomize
 	kustomize build manifests > manifests/bundle.yaml
 
 .PHONY: docker-build
-docker-build: ## Build docker image.
+docker-build:
 	docker build -t ${IMAGE} --build-arg VERSION=$(VERSION) .
 
 ##@ Publish
 
 .PHONY: docker-push
-docker-push: ## Push docker image.
+docker-push:
 	docker push ${IMAGE}
 

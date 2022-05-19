@@ -31,7 +31,7 @@ func NewDiskStatsCollector() DiskStatsCollector {
 		info: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
 				"Info of Ondat volumes and devices.",
-				[]string{"device", "pvc", "major", "minor"}, nil,
+				append(pvcLabels, "device", "major", "minor"), nil,
 			),
 			valueType: prometheus.GaugeValue,
 		},
@@ -201,6 +201,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 		for _, apiVol := range ondatVolumes {
 			if localVol.ID == apiVol.ID {
 				localVol.PVC = apiVol.PVC
+				localVol.PVCNamespace = apiVol.Namespace
 				break
 			}
 		}
@@ -212,7 +213,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			}
 
 			// TODO move into different metric?
-			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, stats.DeviceName, localVol.PVC, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
+			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, localVol.PVC, localVol.PVCNamespace, stats.DeviceName, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
 			ch <- metric
 
 			diskSectorSize := 512.0
@@ -252,7 +253,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 					break
 				}
 
-				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC)
+				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC, localVol.PVCNamespace)
 				ch <- metric
 			}
 		}

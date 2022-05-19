@@ -119,15 +119,16 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		tmp := strings.Split(labels.device, "/")
 		volID := strings.TrimPrefix(tmp[len(tmp)-1], "v.")
 
-		var pvc string
+		var pvc, pvcNamespace string
 		for _, vol := range ondatVolumes {
 			if vol.ID == volID {
 				pvc = vol.PVC
+				pvcNamespace = vol.Namespace
 				break
 			}
 		}
 
-		log = log.With("pvc", pvc)
+		log = log.With("pvc", pvc, "pvc_namespace", pvcNamespace)
 		log.Debugw("processing mount", "device", labels.device, "mountpoint", labels.mountPoint)
 
 		stuckMountsMtx.Lock()
@@ -135,7 +136,7 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 			// TODO
 			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
 			log.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
-			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, labels.device, labels.fsType, labels.mountPoint)
+			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			ch <- metric
 
 			stuckMountsMtx.Unlock()
@@ -162,7 +163,7 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		if err != nil {
 			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
 			log.Errorw("error on statfs() system call", "device", labels.device, "mountpoint", labels.mountPoint, "error", err)
-			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, labels.device, labels.fsType, labels.mountPoint)
+			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			ch <- metric
 			continue
 		}
@@ -184,10 +185,10 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 			float64(buf.Ffree),                       // total free inodes
 			ro,
 		} {
-			metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, labels.device, labels.fsType, labels.mountPoint)
+			metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			ch <- metric
 		}
-		metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, labels.device, labels.fsType, labels.mountPoint)
+		metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 		ch <- metric
 	}
 

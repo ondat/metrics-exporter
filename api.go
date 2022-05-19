@@ -47,8 +47,9 @@ var (
 )
 
 type VolumePVC struct {
-	ID  string
-	PVC string
+	ID        string
+	PVC       string
+	Namespace string
 }
 
 type ControlPlane interface {
@@ -203,7 +204,7 @@ func GetOndatVolumesAPI(log *zap.SugaredLogger, apiSecretsPath string) ([]Volume
 
 		for _, vol := range vols {
 			pvc := vol.Labels[PvcLabel]
-			res = append(res, VolumePVC{ID: vol.Id, PVC: pvc})
+			res = append(res, VolumePVC{ID: vol.Id, PVC: pvc, Namespace: ns.Name})
 		}
 	}
 	return res, nil
