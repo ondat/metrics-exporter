@@ -6,6 +6,7 @@ import (
 
 const (
 	// ONDAT_NAMESPACE defines the common namespace used by all our metrics.
+	// Not to be confused with the k8s namespace where resources live.
 	//
 	// "ondat_..."
 	ONDAT_NAMESPACE = "ondat"
