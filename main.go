@@ -30,8 +30,6 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// if these are to be configurable then we need to add them to a config map and
-// refer to that configmap from the servicemonitor + service + ?
 const (
 	address  = ":9100"
 	endpoint = "/metrics"
@@ -81,7 +79,8 @@ func main() {
 	http.Handle(endpoint, promhttp.HandlerFor(
 		prometheusRegistry,
 		promhttp.HandlerOpts{
-			// the request continues on the background but the user gets the correct response
+			// the request will continue on the background but the user requests
+			// gets the correct timeout response
 			Timeout:       time.Second * time.Duration(timeoutFlag),
 			ErrorHandling: promhttp.ContinueOnError,
 		},
@@ -105,7 +104,7 @@ func main() {
 
 	log.Infow("starting http handler", "port", address)
 	if err := http.ListenAndServe(address, nil); err != nil {
-		log.Errorw("problem running http server", "error", err)
+		log.Errorw("error running http server", "error", err)
 		os.Exit(1)
 	}
 }

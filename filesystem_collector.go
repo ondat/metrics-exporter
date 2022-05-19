@@ -98,8 +98,13 @@ func (c FileSystemCollector) Name() string {
 }
 
 func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
-	log.Debug("starting filesystem collector")
+	log.Debug("starting filesystem metrics collector")
 	log = log.With("collector", FILE_SYSTEM_COLLECTOR_NAME)
+
+	if len(ondatVolumes) == 0 {
+		log.Debug("no Ondat volumes, metrics collector finished early")
+		return nil
+	}
 
 	// TODO consider skipping getting all fs mounted devices
 	// and fetch the data for each Ondat volume directly
@@ -128,15 +133,16 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 			}
 		}
 
-		log = log.With("pvc", pvc, "pvc_namespace", pvcNamespace)
-		log.Debugw("processing mount", "device", labels.device, "mountpoint", labels.mountPoint)
+		log = log.With("pvc", pvc, "pvc_namespace", pvcNamespace, "device", labels.device, "mountpoint", labels.mountPoint)
 
 		stuckMountsMtx.Lock()
 		if _, ok := stuckMounts[labels.mountPoint]; ok {
-			// TODO
-			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
 			log.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
-			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+			metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+			if err != nil {
+				log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+				continue
+			}
 			ch <- metric
 
 			stuckMountsMtx.Unlock()
@@ -161,10 +167,13 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		stuckMountsMtx.Unlock()
 
 		if err != nil {
-			// ReportScrapeResult(log, ch, timeStart, "filesystem", false)
 			log.Errorw("error on statfs() system call", "device", labels.device, "mountpoint", labels.mountPoint, "error", err)
-			metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
-			ch <- metric
+			metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+			if err != nil {
+				log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+			} else {
+				ch <- metric
+			}
 			continue
 		}
 
@@ -176,7 +185,6 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 			}
 		}
 
-		// TODO labels
 		for i, val := range []float64{
 			float64(buf.Blocks) * float64(buf.Bsize), // blocks * size per block = total space (bytes)
 			float64(buf.Bfree) * float64(buf.Bsize),  // available blocks * size per block = total free space (bytes)
@@ -185,14 +193,22 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 			float64(buf.Ffree),                       // total free inodes
 			ro,
 		} {
-			metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+			metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+			if err != nil {
+				log.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
+				continue
+			}
 			ch <- metric
 		}
-		metric, _ := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+		metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
+		if err != nil {
+			log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+			continue
+		}
 		ch <- metric
 	}
 
-	log.Debug("finished filesystem colletor")
+	log.Debug("finished metrics colletor")
 	return nil
 }
 
