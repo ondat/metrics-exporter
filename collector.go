@@ -47,13 +47,6 @@ func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	// TODO returning here means no metrics at all
-	// confirm behaviour
-	if len(ondatVolumes) == 0 {
-		c.log.Debug("no Ondat volumes")
-		return
-	}
-
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.collectors))
 	for _, collector := range c.collectors {

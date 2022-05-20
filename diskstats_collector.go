@@ -21,8 +21,8 @@ type DiskStatsCollector struct {
 	info Metric
 
 	// all PVC metrics we gather from diskstats
-	// useful as a standalone variable to iterate over and index match with diskstats's content
-	// order MUST match the columns in the diskstats file
+	// useful as a standalone variable to iterate over and index match with diskstats's
+	// content order MUST match the columns in the diskstats file
 	metrics []Metric
 }
 
@@ -31,7 +31,7 @@ func NewDiskStatsCollector() DiskStatsCollector {
 		info: Metric{
 			desc: prometheus.NewDesc(prometheus.BuildFQName(ONDAT_NAMESPACE, DISK_SUBSYSTEM, "info"),
 				"Info of Ondat volumes and devices.",
-				[]string{"device", "pvc", "major", "minor"}, nil,
+				append(pvcLabels, "device", "major", "minor"), nil,
 			),
 			valueType: prometheus.GaugeValue,
 		},
@@ -175,8 +175,13 @@ func (c DiskStatsCollector) Name() string {
 }
 
 func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
-	log.Debug("starting diskstats collector")
+	log.Debug("starting diskstats metrics collector")
 	log = log.With("collector", DISKSTATS_COLLECTOR_NAME)
+
+	if len(ondatVolumes) == 0 {
+		log.Debug("no Ondat volumes, metrics collector finished early")
+		return nil
+	}
 
 	volumesOnNode, err := GetOndatVolumesFS()
 	if err != nil {
@@ -185,8 +190,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 	}
 
 	if len(volumesOnNode) == 0 {
-		log.Debug("no Ondat volumes on node")
-		// TODO confirm this behaviour is desired
+		log.Debug("no Ondat volumes on node, metrics collector finished early")
 		return nil
 	}
 
@@ -197,13 +201,16 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 	}
 
 	for _, localVol := range volumesOnNode {
-		// find the volume within the list from the API and get the PVC name
+		// find the volume within the API response and retrieve the PVC info we are missing here
 		for _, apiVol := range ondatVolumes {
 			if localVol.ID == apiVol.ID {
 				localVol.PVC = apiVol.PVC
+				localVol.PVCNamespace = apiVol.Namespace
 				break
 			}
 		}
+
+		log = log.With("pvc", localVol.PVC, "pvc_namespace", localVol.PVCNamespace)
 
 		for _, stats := range diskstats {
 			// match with Ondat volume through diskstat row's Major and Minor numbers
@@ -211,9 +218,15 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 				continue
 			}
 
-			// TODO move into different metric?
-			metric, _ := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, stats.DeviceName, localVol.PVC, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
-			ch <- metric
+			// Build the info metric for each diskstate line (volume) processed.
+			// Its value is not relevant as we only care about the labels.
+			// Failure to do so shouldn't stop us from collecting any further metrics.
+			metric, err := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, localVol.PVC, localVol.PVCNamespace, stats.DeviceName, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
+			if err != nil {
+				log.Errorw("encountered error while building metric", "metric", c.info.desc.String(), "error", err)
+			} else {
+				ch <- metric
+			}
 
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
@@ -247,17 +260,23 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 				float64(stats.TimeSpentFlushing) * SECOND_IN_MILLISECONDS,
 			} {
 				if i >= statCount {
-					// didn't read all the above fields from diskstats
-					// kernel version lower than 5.5
+					// Didn't read all the above fields from diskstats.
+					// Kernel version must be lower than v5.5 where these
+					// fields don't exist yet.
+					log.Debugf("diskstats number of colums processed was %s. If on kernel older than v5.5 this msg can be ignored.")
 					break
 				}
 
-				metric, _ := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC)
+				metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC, localVol.PVCNamespace)
+				if err != nil {
+					log.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
+					continue
+				}
 				ch <- metric
 			}
 		}
 	}
 
-	log.Debug("finished diskstats collector")
+	log.Debug("finished metrics collector")
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 
 const (
 	// ONDAT_NAMESPACE defines the common namespace used by all our metrics.
+	// Not to be confused with the k8s namespace where resources live.
 	//
 	// "ondat_..."
 	ONDAT_NAMESPACE = "ondat"
@@ -28,10 +29,10 @@ const (
 
 var (
 	// labels present in all disk metrics to identify the PVC
-	pvcLabels = []string{"pvc"}
+	pvcLabels = []string{"pvc", "pvc_namespace"}
 
 	// labels present in all filesystem metrics to identify the device
-	fsLabels = []string{"pvc", "device", "fstype", "mountpoint"}
+	fsLabels = []string{"pvc", "pvc_namespace", "device", "fstype", "mountpoint"}
 
 	// labels present in all scrape metrics to identify the collector
 	collectorLabels = []string{"collector"}

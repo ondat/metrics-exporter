@@ -25,10 +25,11 @@ const (
 )
 
 type Volume struct {
-	Major int
-	Minor int
-	ID    string // Control Plane volume ID
-	PVC   string // K8s friendly PVC name
+	Major        int
+	Minor        int
+	ID           string // Control Plane volume ID
+	PVC          string // K8s friendly PVC name
+	PVCNamespace string // K8s namespace of the PVC
 }
 
 // ProcDiskstats reads the diskstats file and returns an array of Diskstats (one
