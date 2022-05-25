@@ -102,7 +102,7 @@ jobs:
         with:
           ref: ${{ github.event.ref }}
       - name: Set env var VERSION
-        run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
         run: echo "IMAGE=storageos/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Build image
@@ -127,7 +127,7 @@ jobs:
         with:
           ref: ${{ github.event.ref }}
       - name: Set env var VERSION
-        run: echo "VERSION=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
       - name: Set env var IMAGE
         run: echo "IMAGE=storageos/metrics-exporter:${{ env.VERSION }}" >> $GITHUB_ENV
       - name: Set env var REDHAT_IMAGE_TAG
