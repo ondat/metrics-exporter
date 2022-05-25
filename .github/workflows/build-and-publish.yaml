@@ -5,6 +5,8 @@ on:
     branches:
       - '**'
       - '!main'
+    tags:
+      - 'v*'
 
 jobs:
   bundle-up-to-date:  
@@ -90,7 +92,7 @@ jobs:
       - name: Build binary
         run: make build
   publish-image-docker:
-    if: startsWith(github.event.ref, 'refs/heads/release/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     name: Publish image to DockerHub
     needs: build
@@ -115,7 +117,7 @@ jobs:
       - name: Push image
         run: make docker-push
   publish-image-redhat:
-    if: startsWith(github.event.ref, 'refs/heads/release/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-18.04
     name: Publish image to RedHat
     needs: build
@@ -147,11 +149,11 @@ jobs:
     runs-on: ubuntu-18.04
     name: GitHub release
     needs: build
-    if: startsWith(github.event.ref, 'refs/heads/release/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
-          files: manifest/bundle.yaml
+          files: manifests/bundle.yaml
