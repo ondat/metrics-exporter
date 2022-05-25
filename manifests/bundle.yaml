@@ -88,6 +88,7 @@ spec:
         - mountPath: /etc/storageos/secrets/api
           name: api-secret
           readOnly: true
+      serviceAccountName: storageos-metrics-exporter
       volumes:
       - hostPath:
           path: /var/lib/storageos
