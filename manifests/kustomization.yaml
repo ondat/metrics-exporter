@@ -1,10 +1,9 @@
 namespace: storageos
 
-namePrefix: storageos-
-
 commonLabels:
   app: storageos
 
 resources:
+- rbac.yaml
 - daemonset.yaml
 - service.yaml
