@@ -97,7 +97,7 @@ func (c FileSystemCollector) Name() string {
 	return FILE_SYSTEM_COLLECTOR_NAME
 }
 
-func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
+func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []*Volume) error {
 	log.Debug("starting filesystem metrics collector")
 	log = log.With("collector", FILE_SYSTEM_COLLECTOR_NAME)
 
@@ -126,9 +126,9 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 
 		var pvc, pvcNamespace string
 		for _, vol := range ondatVolumes {
-			if vol.ID == volID {
-				pvc = vol.PVC
-				pvcNamespace = vol.Namespace
+			if vol.Master.VolumeID == volID {
+				pvc = vol.Labels.PVC
+				pvcNamespace = vol.Labels.PVCNamespace
 				break
 			}
 		}

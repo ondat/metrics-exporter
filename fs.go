@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,11 +12,13 @@ import (
 	"strings"
 
 	"github.com/prometheus/procfs/blockdevice"
+	"go.uber.org/zap"
 )
 
 const (
-	STOS_VOLUMES_PATH = "/var/lib/storageos/volumes"
-	DISKSTATS_PATH    = "/proc/diskstats"
+	STOS_VOLUMES_PATH       = "/var/lib/storageos/volumes"
+	DISKSTATS_PATH          = "/proc/diskstats"
+	STOS_VOLUMES_STATE_PATH = "/var/lib/storageos/state/"
 
 	// PROC_DISKSTATS_MIN_NUM_FIELDS is the minimum number of fields we expect
 	// to find in the /proc/diskstats (kernels v4.18+ add more).
@@ -25,11 +28,20 @@ const (
 )
 
 type Volume struct {
-	Major        int
-	Minor        int
-	ID           string // Control Plane volume ID
-	PVC          string // K8s friendly PVC name
-	PVCNamespace string // K8s namespace of the PVC
+	Major int
+	Minor int
+
+	Master Master `json:"master"`
+	Labels Labels `json:"labels"`
+}
+
+type Labels struct {
+	PVC          string `json:"csi.storage.k8s.io/pvc/name"`      // K8s friendly PVC name
+	PVCNamespace string `json:"csi.storage.k8s.io/pvc/namespace"` // K8s namespace of the PVC
+}
+
+type Master struct {
+	VolumeID string `json:"volumeID"` // Control Plane volume ID
 }
 
 // ProcDiskstats reads the diskstats file and returns an array of Diskstats (one
@@ -88,24 +100,24 @@ func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
 	return strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 }
 
-// GetOndatVolumesFS parses the output from "ls -l" on the storageos block devices
-// directory and builds a list of all local volumes found.
-// includes Major & Minor numbers and Volume ID
-func GetOndatVolumesFS() ([]*Volume, error) {
+// ExtractOndatVolumesNumbers parses the output from "ls -l" on the
+// storageos block devices directory further building the list
+// of volume with Major & Minor numbers
+func ExtractOndatVolumesNumbers(vols []*Volume) error {
 	info, err := os.Stat(STOS_VOLUMES_PATH)
 	if err != nil {
-		return nil, fmt.Errorf("could not read directory %q: %w", STOS_VOLUMES_PATH, err)
+		return fmt.Errorf("could not read directory %q: %w", STOS_VOLUMES_PATH, err)
 	}
 	if !info.IsDir() {
-		return nil, fmt.Errorf("%q is not a directory", STOS_VOLUMES_PATH)
+		return fmt.Errorf("%q is not a directory", STOS_VOLUMES_PATH)
 	}
 
 	output, err := readOndatVolumes()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return parseOndatVolumes(output)
+	return parseOndatVolumes(vols, output)
 }
 
 func readOndatVolumes() ([]string, error) {
@@ -117,13 +129,13 @@ func readOndatVolumes() ([]string, error) {
 	return strings.Split(string(outputRaw), "\n"), nil
 }
 
-func parseOndatVolumes(input []string) ([]*Volume, error) {
+func parseOndatVolumes(vols []*Volume, input []string) error {
 	// exclude first and last elements
 	// first line of `ls -l` shows the total size of blocks on that
 	// dir and the ending "\n" creates an empty element on the array
 	input = input[1 : len(input)-1]
 	if len(input) == 0 {
-		return []*Volume{}, nil
+		return nil
 	}
 
 	var (
@@ -134,7 +146,6 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 		// the volume ID in ControlPlane
 		deviceName   string
 		major, minor int
-		volumes      []*Volume = []*Volume{}
 	)
 
 	for _, line := range input {
@@ -148,19 +159,54 @@ func parseOndatVolumes(input []string) ([]*Volume, error) {
 			&discard, &discard, &discard, &discard, &major, &minor, &discard, &discard, &discard, &deviceName,
 		)
 		if err != nil {
-			// return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
 			// TODO add logging
+			// return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
 			continue
 		}
 
-		volumes = append(volumes,
-			&Volume{
-				ID:    strings.Split(deviceName, ".")[1],
-				Major: major,
-				Minor: minor,
-			},
-		)
+		for _, vol := range vols {
+			if vol.Master.VolumeID == strings.Split(deviceName, ".")[1] {
+				vol.Major = major
+				vol.Minor = minor
+			}
+		}
 	}
 
-	return volumes, nil
+	return nil
+}
+
+func GetVolumesFromLocalState(log *zap.SugaredLogger) ([]*Volume, error) {
+	fsdir, err := os.ReadDir(STOS_VOLUMES_STATE_PATH)
+	if err != nil {
+		return nil, err
+	}
+
+	result := []*Volume{}
+
+	for _, dir := range fsdir {
+		// skip presentations
+		if dir.Name()[0] == 'd' {
+			continue
+		}
+
+		filePath := STOS_VOLUMES_STATE_PATH + dir.Name()
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.Errorf("failed to open volume state file %s, error: %s", filePath, err)
+			continue
+		}
+		defer file.Close()
+
+		content, _ := ioutil.ReadAll(file)
+
+		vol := &Volume{}
+		err = json.Unmarshal([]byte(content), vol)
+		if err != nil {
+			log.Errorf("failed to parse volume state file %s, error: %s", filePath, err)
+			continue
+		}
+
+		result = append(result, vol)
+	}
+	return result, nil
 }

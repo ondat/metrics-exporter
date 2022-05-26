@@ -11,22 +11,19 @@ import (
 
 type Collector interface {
 	Name() string
-	Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error
+	Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []*Volume) error
 }
 
 type CollectorGroup struct {
 	log *zap.SugaredLogger
 
-	apiSecretsPath string
-
 	collectors []Collector
 }
 
-func NewCollectorGroup(log *zap.SugaredLogger, apiSecretsPath string, c []Collector) CollectorGroup {
+func NewCollectorGroup(log *zap.SugaredLogger, c []Collector) CollectorGroup {
 	return CollectorGroup{
-		log:            log,
-		apiSecretsPath: apiSecretsPath,
-		collectors:     c,
+		log:        log,
+		collectors: c,
 	}
 }
 
@@ -39,15 +36,12 @@ func (c CollectorGroup) Describe(ch chan<- *prometheus.Desc) {
 // but also everything that has been gathered successfully.
 // Can be called multiple times asynchronously from the prometheus default registry.
 func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
-	t := time.Now()
-	// All Ondat volumes fetched from the storageos container's API
-	// Every collectors requires it to match against PVC's
-	ondatVolumes, err := GetOndatVolumesAPI(c.log, c.apiSecretsPath)
+	// All local Ondat volumes fetched from the state files
+	ondatVolumes, err := GetVolumesFromLocalState(c.log)
 	if err != nil {
-		c.log.Errorw("failed to fetch Ondat volumes from API", "error", err)
+		c.log.Errorw("failed to get Ondat volumes from local state files", "error", err)
 		return
 	}
-	c.log.Infof("fetched the volumes from API in %s", time.Since(t).String())
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.collectors))
@@ -62,7 +56,7 @@ func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
-func execute(log *zap.SugaredLogger, c Collector, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) {
+func execute(log *zap.SugaredLogger, c Collector, ch chan<- prometheus.Metric, ondatVolumes []*Volume) {
 	timeStart := time.Now()
 
 	// best effort
