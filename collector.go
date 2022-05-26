@@ -39,6 +39,7 @@ func (c CollectorGroup) Describe(ch chan<- *prometheus.Desc) {
 // but also everything that has been gathered successfully.
 // Can be called multiple times asynchronously from the prometheus default registry.
 func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
+	t := time.Now()
 	// All Ondat volumes fetched from the storageos container's API
 	// Every collectors requires it to match against PVC's
 	ondatVolumes, err := GetOndatVolumesAPI(c.log, c.apiSecretsPath)
@@ -46,6 +47,7 @@ func (c CollectorGroup) Collect(ch chan<- prometheus.Metric) {
 		c.log.Errorw("failed to fetch Ondat volumes from API", "error", err)
 		return
 	}
+	c.log.Infof("fetched the volumes from API in %s", time.Since(t).String())
 
 	wg := sync.WaitGroup{}
 	wg.Add(len(c.collectors))

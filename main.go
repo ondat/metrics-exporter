@@ -41,7 +41,7 @@ func main() {
 
 	flag.StringVar(&logLevelFlag, "log-level", "info", "Verbosity of log messages. Accepts go.uber.org/zap log levels.")
 	flag.StringVar(&apiSecretsPathFlag, "api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
-	flag.IntVar(&timeoutFlag, "timeout", 5, "Timeout in seconds to serve metrics.")
+	flag.IntVar(&timeoutFlag, "timeout", 10, "Timeout in seconds to serve metrics.")
 
 	flag.Parse()
 

@@ -210,7 +210,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			}
 		}
 
-		log = log.With("pvc", localVol.PVC, "pvc_namespace", localVol.PVCNamespace)
+		logScope := log.With("pvc", localVol.PVC, "pvc_namespace", localVol.PVCNamespace)
 
 		for _, stats := range diskstats {
 			// match with Ondat volume through diskstat row's Major and Minor numbers
@@ -223,7 +223,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			// Failure to do so shouldn't stop us from collecting any further metrics.
 			metric, err := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, localVol.PVC, localVol.PVCNamespace, stats.DeviceName, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
 			if err != nil {
-				log.Errorw("encountered error while building metric", "metric", c.info.desc.String(), "error", err)
+				logScope.Errorw("encountered error while building metric", "metric", c.info.desc.String(), "error", err)
 			} else {
 				ch <- metric
 			}
@@ -231,7 +231,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
 			if err != nil {
-				log.Errorw("error reading device logical block size, falling back to default", "error", err)
+				logScope.Errorw("error reading device logical block size, falling back to default", "error", err)
 				// continue with default sector size
 			} else {
 				diskSectorSize = float64(logicalBlockSize)
@@ -269,7 +269,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 
 				metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC, localVol.PVCNamespace)
 				if err != nil {
-					log.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
+					logScope.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
 					continue
 				}
 				ch <- metric
