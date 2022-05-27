@@ -36,12 +36,11 @@ const (
 )
 
 func main() {
-	var logLevelFlag, apiSecretsPathFlag string
+	var logLevelFlag string
 	var timeoutFlag int
 
 	flag.StringVar(&logLevelFlag, "log-level", "info", "Verbosity of log messages. Accepts go.uber.org/zap log levels.")
-	flag.StringVar(&apiSecretsPathFlag, "api-secrets-path", "/etc/storageos/secrets/api", "Path where the StorageOS api secrets are mounted. The secret must have \"username\" and \"password\" set.")
-	flag.IntVar(&timeoutFlag, "timeout", 5, "Timeout in seconds to serve metrics.")
+	flag.IntVar(&timeoutFlag, "timeout", 10, "Timeout in seconds to serve metrics.")
 
 	flag.Parse()
 
@@ -69,7 +68,7 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
-	_ = prometheusRegistry.Register(NewCollectorGroup(log, apiSecretsPathFlag, metricsCollectors))
+	_ = prometheusRegistry.Register(NewCollectorGroup(log, metricsCollectors))
 
 	// k8s endpoints
 	http.HandleFunc("/healthz", healthz)

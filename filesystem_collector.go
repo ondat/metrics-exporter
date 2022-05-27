@@ -97,7 +97,7 @@ func (c FileSystemCollector) Name() string {
 	return FILE_SYSTEM_COLLECTOR_NAME
 }
 
-func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
+func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []*Volume) error {
 	log.Debug("starting filesystem metrics collector")
 	log = log.With("collector", FILE_SYSTEM_COLLECTOR_NAME)
 
@@ -126,21 +126,21 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 
 		var pvc, pvcNamespace string
 		for _, vol := range ondatVolumes {
-			if vol.ID == volID {
-				pvc = vol.PVC
-				pvcNamespace = vol.Namespace
+			if vol.Master.VolumeID == volID {
+				pvc = vol.Labels.PVC
+				pvcNamespace = vol.Labels.PVCNamespace
 				break
 			}
 		}
 
-		log = log.With("pvc", pvc, "pvc_namespace", pvcNamespace, "device", labels.device, "mountpoint", labels.mountPoint)
+		logScope := log.With("pvc", pvc, "pvc_namespace", pvcNamespace, "device", labels.device, "mountpoint", labels.mountPoint)
 
 		stuckMountsMtx.Lock()
 		if _, ok := stuckMounts[labels.mountPoint]; ok {
-			log.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
+			logScope.Errorw("mount point is in an unresponsible state", "mountpoint", labels.mountPoint)
 			metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			if err != nil {
-				log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+				logScope.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
 				continue
 			}
 			ch <- metric
@@ -161,16 +161,16 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		close(success)
 		// If the mount has been marked as stuck, unmark it and log it's recovery.
 		if _, ok := stuckMounts[labels.mountPoint]; ok {
-			log.Debugw("mount point has recovered, monitoring will resume", "mountpoint", labels.mountPoint)
+			logScope.Debugw("mount point has recovered, monitoring will resume", "mountpoint", labels.mountPoint)
 			delete(stuckMounts, labels.mountPoint)
 		}
 		stuckMountsMtx.Unlock()
 
 		if err != nil {
-			log.Errorw("error on statfs() system call", "device", labels.device, "mountpoint", labels.mountPoint, "error", err)
+			logScope.Errorw("error on statfs() system call", "device", labels.device, "mountpoint", labels.mountPoint, "error", err)
 			metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 1, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			if err != nil {
-				log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+				logScope.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
 			} else {
 				ch <- metric
 			}
@@ -195,20 +195,20 @@ func (c FileSystemCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheu
 		} {
 			metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 			if err != nil {
-				log.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
+				logScope.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
 				continue
 			}
 			ch <- metric
 		}
 		metric, err := prometheus.NewConstMetric(c.deviceErrors.desc, c.deviceErrors.valueType, 0, pvc, pvcNamespace, labels.device, labels.fsType, labels.mountPoint)
 		if err != nil {
-			log.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
+			logScope.Errorw("encountered error while building metric", "metric", c.deviceErrors.desc.String(), "error", err)
 			continue
 		}
 		ch <- metric
 	}
 
-	log.Debug("finished metrics colletor")
+	log.Debug("finished metrics collector")
 	return nil
 }
 

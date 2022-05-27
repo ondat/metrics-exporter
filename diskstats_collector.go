@@ -174,7 +174,7 @@ func (c DiskStatsCollector) Name() string {
 	return DISKSTATS_COLLECTOR_NAME
 }
 
-func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []VolumePVC) error {
+func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus.Metric, ondatVolumes []*Volume) error {
 	log.Debug("starting diskstats metrics collector")
 	log = log.With("collector", DISKSTATS_COLLECTOR_NAME)
 
@@ -183,15 +183,10 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 		return nil
 	}
 
-	volumesOnNode, err := GetOndatVolumesFS()
+	err := ExtractOndatVolumesNumbers(ondatVolumes)
 	if err != nil {
-		log.Errorw("error getting Ondat volumes", "error", err)
+		log.Errorw("error getting Ondat volumes major and minor numbers", "error", err)
 		return err
-	}
-
-	if len(volumesOnNode) == 0 {
-		log.Debug("no Ondat volumes on node, metrics collector finished early")
-		return nil
 	}
 
 	diskstats, err := ProcDiskstats()
@@ -200,17 +195,8 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 		return err
 	}
 
-	for _, localVol := range volumesOnNode {
-		// find the volume within the API response and retrieve the PVC info we are missing here
-		for _, apiVol := range ondatVolumes {
-			if localVol.ID == apiVol.ID {
-				localVol.PVC = apiVol.PVC
-				localVol.PVCNamespace = apiVol.Namespace
-				break
-			}
-		}
-
-		log = log.With("pvc", localVol.PVC, "pvc_namespace", localVol.PVCNamespace)
+	for _, localVol := range ondatVolumes {
+		logScope := log.With("pvc", localVol.Labels.PVC, "pvc_namespace", localVol.Labels.PVCNamespace)
 
 		for _, stats := range diskstats {
 			// match with Ondat volume through diskstat row's Major and Minor numbers
@@ -221,9 +207,9 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			// Build the info metric for each diskstate line (volume) processed.
 			// Its value is not relevant as we only care about the labels.
 			// Failure to do so shouldn't stop us from collecting any further metrics.
-			metric, err := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, localVol.PVC, localVol.PVCNamespace, stats.DeviceName, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
+			metric, err := prometheus.NewConstMetric(c.info.desc, c.info.valueType, 1.0, localVol.Labels.PVC, localVol.Labels.PVCNamespace, stats.DeviceName, fmt.Sprint(localVol.Major), fmt.Sprint(localVol.Minor))
 			if err != nil {
-				log.Errorw("encountered error while building metric", "metric", c.info.desc.String(), "error", err)
+				logScope.Errorw("encountered error while building metric", "metric", c.info.desc.String(), "error", err)
 			} else {
 				ch <- metric
 			}
@@ -231,7 +217,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 			diskSectorSize := 512.0
 			logicalBlockSize, err := GetBlockDeviceLogicalBlockSize(stats.DeviceName)
 			if err != nil {
-				log.Errorw("error reading device logical block size, falling back to default", "error", err)
+				logScope.Errorw("error reading device logical block size, falling back to default", "error", err)
 				// continue with default sector size
 			} else {
 				diskSectorSize = float64(logicalBlockSize)
@@ -267,9 +253,9 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 					break
 				}
 
-				metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.PVC, localVol.PVCNamespace)
+				metric, err := prometheus.NewConstMetric(c.metrics[i].desc, c.metrics[i].valueType, val, localVol.Labels.PVC, localVol.Labels.PVCNamespace)
 				if err != nil {
-					log.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
+					logScope.Errorw("encountered error while building metric", "metric", c.metrics[i].desc.String(), "error", err)
 					continue
 				}
 				ch <- metric
