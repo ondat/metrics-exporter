@@ -183,7 +183,7 @@ func (c DiskStatsCollector) Collect(log *zap.SugaredLogger, ch chan<- prometheus
 		return nil
 	}
 
-	err := ExtractOndatVolumesNumbers(ondatVolumes)
+	err := ExtractOndatVolumesNumbers(log, ondatVolumes)
 	if err != nil {
 		log.Errorw("error getting Ondat volumes major and minor numbers", "error", err)
 		return err

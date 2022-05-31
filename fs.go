@@ -103,7 +103,7 @@ func GetBlockDeviceLogicalBlockSize(device string) (uint64, error) {
 // ExtractOndatVolumesNumbers parses the output from "ls -l" on the
 // storageos block devices directory further building the list
 // of volume with Major & Minor numbers
-func ExtractOndatVolumesNumbers(vols []*Volume) error {
+func ExtractOndatVolumesNumbers(log *zap.SugaredLogger, vols []*Volume) error {
 	info, err := os.Stat(STOS_VOLUMES_PATH)
 	if err != nil {
 		return fmt.Errorf("could not read directory %q: %w", STOS_VOLUMES_PATH, err)
@@ -117,7 +117,7 @@ func ExtractOndatVolumesNumbers(vols []*Volume) error {
 		return err
 	}
 
-	return parseOndatVolumes(vols, output)
+	return parseOndatVolumes(log, vols, output)
 }
 
 func readOndatVolumes() ([]string, error) {
@@ -129,7 +129,7 @@ func readOndatVolumes() ([]string, error) {
 	return strings.Split(string(outputRaw), "\n"), nil
 }
 
-func parseOndatVolumes(vols []*Volume, input []string) error {
+func parseOndatVolumes(log *zap.SugaredLogger, vols []*Volume, input []string) error {
 	// exclude first and last elements
 	// first line of `ls -l` shows the total size of blocks on that
 	// dir and the ending "\n" creates an empty element on the array
@@ -159,8 +159,7 @@ func parseOndatVolumes(vols []*Volume, input []string) error {
 			&discard, &discard, &discard, &discard, &major, &minor, &discard, &discard, &discard, &deviceName,
 		)
 		if err != nil {
-			// TODO add logging
-			// return nil, fmt.Errorf("error ingesting command output %s: %w", line, err)
+			log.Warnf("failed to parse output of ls, raw line: %s. Error: %s", line, err)
 			continue
 		}
 

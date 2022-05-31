@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestParseOndatVolumes(t *testing.T) {
@@ -112,7 +113,12 @@ brw-rw---- 1 root disk      8, 48 Feb 25 15:18 v.78e88095-e690-49be-b0f3-3f735ef
 		var tt = tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			err := parseOndatVolumes(tt.volumes, strings.Split(tt.lsOutput, "\n"))
+
+			loggerConfig := zap.NewProductionConfig()
+			logger, _ := loggerConfig.Build()
+			log := logger.Sugar()
+
+			err := parseOndatVolumes(log, tt.volumes, strings.Split(tt.lsOutput, "\n"))
 			if err != nil {
 				require.EqualError(t, tt.expectedErr, err.Error())
 			} else {
