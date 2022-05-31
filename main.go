@@ -98,7 +98,6 @@ func main() {
 		}
 		_ = templ.Execute(w, &data)
 		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
 	}))
 
 	log.Infow("starting http handler", "port", address)
