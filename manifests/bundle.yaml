@@ -72,7 +72,7 @@ spec:
         category: metrics-exporter
     spec:
       containers:
-      - image: storageos/metrics-exporter:v0.1.2
+      - image: storageos/metrics-exporter:v0.1.5
         imagePullPolicy: IfNotPresent
         name: storageos-metrics-exporter
         securityContext:

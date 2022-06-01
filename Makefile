@@ -1,7 +1,7 @@
 # Placeholder environment variables. These should be present when building
 # and pushing new docker images within the context of github actions.
 # Target version
-VERSION ?= 0.1.2
+VERSION ?= 0.1.5
 # Target docker image URL for building/pushing actions.
 IMAGE ?= storageos/metrics-exporter:${VERSION}
 

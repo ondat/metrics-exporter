@@ -15,7 +15,7 @@ spec:
       serviceAccountName: storageos-metrics-exporter
       containers:
       - name: storageos-metrics-exporter
-        image: storageos/metrics-exporter:v0.1.2
+        image: storageos/metrics-exporter:v0.1.5
         imagePullPolicy: IfNotPresent
         volumeMounts:
           - mountPath: /var/lib/storageos
