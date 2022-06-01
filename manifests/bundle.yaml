@@ -43,7 +43,7 @@ metadata:
   labels:
     app: storageos
     service-discovery: storageos-metrics-exporter
-  name: storageos-metrics-exporter-svc
+  name: storageos-metrics-exporter
   namespace: storageos
 spec:
   clusterIP: None
