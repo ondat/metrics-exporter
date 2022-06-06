@@ -2,6 +2,7 @@
 # Ignore all files that are not necessary to build and run the binary
 **/*
 !**/*.go
+!api/*
 !go.mod
 !go.sum
 !index.html

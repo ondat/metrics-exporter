@@ -38,6 +38,20 @@ subjects:
   namespace: storageos
 ---
 apiVersion: v1
+data:
+  metrics-exporter-config.yaml: |
+    apiVersion: config.storageos.com/v1
+    kind: MetricsExporterConfig
+    logLevel: info
+    timeout: 10
+kind: ConfigMap
+metadata:
+  labels:
+    app: storageos
+  name: storageos-metrics-exporter-6kd7dt7582
+  namespace: storageos
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -72,7 +86,10 @@ spec:
         category: metrics-exporter
     spec:
       containers:
-      - image: storageos/metrics-exporter:v0.1.5
+      - args:
+        - -config
+        - /etc/storageos/metrics-exporter-config.yaml
+        image: storageos/metrics-exporter:v0.1.5
         imagePullPolicy: IfNotPresent
         name: storageos-metrics-exporter
         securityContext:
@@ -86,6 +103,10 @@ spec:
           mountPropagation: HostToContainer
           name: kubelet-dir
           readOnly: true
+        - mountPath: /etc/storageos/metrics-exporter-config.yaml
+          name: storageos-metrics-exporter
+          readOnly: true
+          subPath: metrics-exporter-config.yaml
       serviceAccountName: storageos-metrics-exporter
       volumes:
       - hostPath:
@@ -95,3 +116,6 @@ spec:
           path: /var/lib/kubelet
           type: Directory
         name: kubelet-dir
+      - configMap:
+          name: storageos-metrics-exporter-6kd7dt7582
+        name: storageos-metrics-exporter

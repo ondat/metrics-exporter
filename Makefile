@@ -1,7 +1,7 @@
 # Placeholder environment variables. These should be present when building
 # and pushing new docker images within the context of github actions.
 # Target version
-VERSION ?= 0.1.2
+VERSION ?= 0.1.5
 # Target docker image URL for building/pushing actions.
 IMAGE ?= storageos/metrics-exporter:${VERSION}
 
@@ -10,6 +10,12 @@ IMAGE ?= storageos/metrics-exporter:${VERSION}
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+GOBIN = $(shell pwd)/bin
+CONTROLLER_GEN = $(GOBIN)/controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN):
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.0
 
 .PHONY: all
 all: build
@@ -51,8 +57,12 @@ run:
 build:
 	go build -o bin/metrics-exporter .
 
+.PHONY: generate
+generate: controller-gen
+	$(CONTROLLER_GEN) object paths=./api/config.storageos.com/...
+
 .PHONY: bundle
-bundle: ## build the install bundle with kustomize
+bundle:
 	kustomize build manifests > manifests/bundle.yaml
 
 .PHONY: docker-build
@@ -64,4 +74,3 @@ docker-build:
 .PHONY: docker-push
 docker-push:
 	docker push ${IMAGE}
-

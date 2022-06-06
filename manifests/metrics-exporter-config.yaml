@@ -1,0 +1,4 @@
+apiVersion: config.storageos.com/v1
+kind: MetricsExporterConfig
+logLevel: info
+timeout: 10
