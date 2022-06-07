@@ -79,14 +79,12 @@ spec:
           privileged: true
         volumeMounts:
         - mountPath: /var/lib/storageos
+          mountPropagation: Bidirectional
           name: state
           readOnly: true
         - mountPath: /var/lib/kubelet
           mountPropagation: Bidirectional
           name: kubelet-dir
-          readOnly: true
-        - mountPath: /etc/storageos/secrets/api
-          name: api-secret
           readOnly: true
       serviceAccountName: storageos-metrics-exporter
       volumes:
@@ -97,6 +95,3 @@ spec:
           path: /var/lib/kubelet
           type: Directory
         name: kubelet-dir
-      - name: api-secret
-        secret:
-          secretName: storageos-api
