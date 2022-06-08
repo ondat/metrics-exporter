@@ -15,19 +15,17 @@ spec:
       serviceAccountName: storageos-metrics-exporter
       containers:
       - name: storageos-metrics-exporter
-        image: storageos/metrics-exporter:v0.1.2
+        image: storageos/metrics-exporter:v0.1.5
         imagePullPolicy: IfNotPresent
         volumeMounts:
           - mountPath: /var/lib/storageos
             name: state
             readOnly: true
+            mountPropagation: HostToContainer
           - mountPath: /var/lib/kubelet
             name: kubelet-dir
             readOnly: true
-            mountPropagation: Bidirectional
-          - mountPath: /etc/storageos/secrets/api
-            name: api-secret
-            readOnly: true
+            mountPropagation: HostToContainer
         securityContext:
           privileged: true
       volumes:
@@ -38,7 +36,4 @@ spec:
           path: /var/lib/kubelet
           type: Directory
         name: kubelet-dir
-      - name: api-secret
-        secret:
-         secretName: storageos-api
 
