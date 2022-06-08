@@ -7,3 +7,8 @@ resources:
 - rbac.yaml
 - daemonset.yaml
 - service.yaml
+
+configMapGenerator:
+  - name: storageos-metrics-exporter
+    files:
+      - metrics-exporter-config.yaml

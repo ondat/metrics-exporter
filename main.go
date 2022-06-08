@@ -17,17 +17,19 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 )
 
 const (
@@ -35,18 +37,21 @@ const (
 	endpoint = "/metrics"
 )
 
+var (
+	scheme = runtime.NewScheme()
+)
+
+func init() {
+	// +kubebuilder:scaffold:scheme
+	utilruntime.Must(configondatv1.AddToScheme(scheme))
+}
+
 func main() {
-	var logLevelFlag string
-	var timeoutFlag int
+	configFile, cfg := getConfigOrDie()
 
-	flag.StringVar(&logLevelFlag, "log-level", "info", "Verbosity of log messages. Accepts go.uber.org/zap log levels.")
-	flag.IntVar(&timeoutFlag, "timeout", 10, "Timeout in seconds to serve metrics.")
-
-	flag.Parse()
-
-	level, err := zapcore.ParseLevel(logLevelFlag)
+	level, err := zapcore.ParseLevel(cfg.LogLevel)
 	if err != nil {
-		log.Printf("failed to parse log level %s: %s\n", logLevelFlag, err.Error())
+		log.Printf("failed to parse log level %s: %s\n", cfg.LogLevel, err.Error())
 		os.Exit(1)
 	}
 
@@ -61,6 +66,11 @@ func main() {
 	}
 	defer func() { _ = logger.Sync() }()
 	log := logger.Sugar()
+
+	if len(configFile) > 0 {
+		log.Debugf("Loaded config file \"%s\"", configFile)
+	}
+	log.Debugf("Serve metrics timeout set to %d seconds", cfg.Timeout)
 
 	metricsCollectors := []Collector{
 		NewDiskStatsCollector(),
@@ -80,7 +90,7 @@ func main() {
 		promhttp.HandlerOpts{
 			// the request will continue on the background but the user requests
 			// gets the correct timeout response
-			Timeout:       time.Second * time.Duration(timeoutFlag),
+			Timeout:       time.Second * time.Duration(cfg.Timeout),
 			ErrorHandling: promhttp.ContinueOnError,
 		},
 	))
