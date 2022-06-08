@@ -72,18 +72,18 @@ spec:
         category: metrics-exporter
     spec:
       containers:
-      - image: storageos/metrics-exporter:v0.1.2
+      - image: storageos/metrics-exporter:v0.1.5
         imagePullPolicy: IfNotPresent
         name: storageos-metrics-exporter
         securityContext:
           privileged: true
         volumeMounts:
         - mountPath: /var/lib/storageos
-          mountPropagation: Bidirectional
+          mountPropagation: HostToContainer
           name: state
           readOnly: true
         - mountPath: /var/lib/kubelet
-          mountPropagation: Bidirectional
+          mountPropagation: HostToContainer
           name: kubelet-dir
           readOnly: true
       serviceAccountName: storageos-metrics-exporter
