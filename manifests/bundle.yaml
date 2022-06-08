@@ -89,7 +89,7 @@ spec:
       - args:
         - -config
         - /etc/storageos/metrics-exporter-config.yaml
-        image: storageos/metrics-exporter:v0.1.5
+        image: storageos/metrics-exporter:v0.1.6
         imagePullPolicy: IfNotPresent
         name: storageos-metrics-exporter
         securityContext:
