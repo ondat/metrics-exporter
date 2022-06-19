@@ -2,6 +2,7 @@ namespace: storageos
 
 commonLabels:
   app: storageos
+  app.kubernetes.io/component: metrics-exporter
 
 resources:
 - rbac.yaml
