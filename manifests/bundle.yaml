@@ -42,7 +42,7 @@ subjects:
 ---
 apiVersion: v1
 data:
-  metrics-exporter-config.yaml: |
+  config.yaml: |
     apiVersion: config.storageos.com/v1
     kind: MetricsExporterConfig
     logLevel: info
@@ -115,7 +115,7 @@ spec:
         - mountPath: /etc/storageos/metrics-exporter-config.yaml
           name: storageos-metrics-exporter
           readOnly: true
-          subPath: metrics-exporter-config.yaml
+          subPath: config.yaml
       serviceAccountName: storageos-metrics-exporter
       volumes:
       - hostPath:

@@ -31,7 +31,7 @@ spec:
             - mountPath: /etc/storageos/metrics-exporter-config.yaml
               name: storageos-metrics-exporter
               readOnly: true
-              subPath: metrics-exporter-config.yaml
+              subPath: config.yaml
           securityContext:
             privileged: true
       volumes:
