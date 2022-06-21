@@ -2,6 +2,7 @@ namespace: storageos
 
 commonLabels:
   app: storageos
+  app.kubernetes.io/component: metrics-exporter
 
 resources:
 - rbac.yaml
@@ -11,4 +12,7 @@ resources:
 configMapGenerator:
   - name: storageos-metrics-exporter
     files:
-      - metrics-exporter-config.yaml
+      - config.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
