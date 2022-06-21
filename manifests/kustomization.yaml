@@ -13,3 +13,6 @@ configMapGenerator:
   - name: storageos-metrics-exporter
     files:
       - metrics-exporter-config.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
