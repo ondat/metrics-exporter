@@ -61,7 +61,6 @@ metadata:
   labels:
     app: storageos
     app.kubernetes.io/component: metrics-exporter
-    service-discovery: storageos-metrics-exporter
   name: storageos-metrics-exporter
   namespace: storageos
 spec:
