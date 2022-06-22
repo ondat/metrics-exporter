@@ -28,6 +28,12 @@ type MetricsExporterConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	MetricsExporterConfigSpec `json:",inline"`
+}
+
+// MetricsExporterConfigSpec represents the configuration options for the metrics-exporter. These fields shall
+// be inlined in the StorageOSCluster.Spec.Metrics.
+type MetricsExporterConfigSpec struct {
 	// Verbosity of log messages. Accepts go.uber.org/zap log levels.
 	// +kubebuilder:default:info
 	// +kubebuilder:validation:Enum=debug;info;warn;error;dpanic;panic;fatal
@@ -36,8 +42,21 @@ type MetricsExporterConfig struct {
 	// Timeout in seconds to serve metrics.
 	// +kubebuilder:default:10
 	// +kubebuilder:validation:Minimum=1
-	Timeout int `json:"timeout"`
+	Timeout int `json:"timeout,omitempty"`
+
+	// DisabledCollectors is a list of collectors that shall be disabled. By default, all are enabled.
+	DisabledCollectors []MetricsExporterCollector `json:"disabledCollectors,omitempty"`
 }
+
+// MetricsExporterCollector is the name of a metrics collector in the metrics-exporter.
+// +kubebuilder:validation:Enum=diskstats;filesystem
+type MetricsExporterCollector string
+
+// All known metrics-exporter collectors are listed here.
+const (
+	MetricsExporterCollectorDiskStats  MetricsExporterCollector = "diskstats"
+	MetricsExporterCollectorFileSystem MetricsExporterCollector = "filesystem"
+)
 
 func init() {
 	SchemeBuilder.Register(&MetricsExporterConfig{})

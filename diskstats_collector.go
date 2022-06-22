@@ -5,13 +5,15 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 )
 
 const (
 	// SECOND_IN_MILLISECONDS defines the number of seconds on a milliseconds. Used
 	// to transform metrics that express a duration in milliseconds.
 	SECOND_IN_MILLISECONDS   = 1.0 / 1000.0
-	DISKSTATS_COLLECTOR_NAME = "diskstats"
+	DISKSTATS_COLLECTOR_NAME = string(configondatv1.MetricsExporterCollectorDiskStats)
 )
 
 // DiskStatsCollector implements the prometheus Collector interface

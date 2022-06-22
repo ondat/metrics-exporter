@@ -22,16 +22,10 @@ import (
 	"log"
 	"os"
 
-	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-)
 
-var (
-	configDefaults = configondatv1.MetricsExporterConfig{
-		LogLevel: "info",
-		Timeout:  10,
-	}
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 )
 
 func readConfigFile(path string) (*configondatv1.MetricsExporterConfig, error) {
@@ -42,11 +36,12 @@ func readConfigFile(path string) (*configondatv1.MetricsExporterConfig, error) {
 
 	codecs := serializer.NewCodecFactory(scheme)
 
-	cfg := *configDefaults.DeepCopy()
-	if err = runtime.DecodeInto(codecs.UniversalDecoder(), content, &cfg); err != nil {
+	cfg := (&configondatv1.MetricsExporterConfig{}).Default()
+	if err = runtime.DecodeInto(codecs.UniversalDecoder(), content, cfg); err != nil {
 		return nil, fmt.Errorf("could not decode file into runtime.Object: %v", err)
 	}
-	return &cfg, nil
+
+	return cfg, nil
 }
 
 func getConfigOrDie() (path string, cfg configondatv1.MetricsExporterConfig) {
@@ -54,13 +49,15 @@ func getConfigOrDie() (path string, cfg configondatv1.MetricsExporterConfig) {
 	var logLevelFlag string
 	var timeoutFlag int
 
+	defaults := (&configondatv1.MetricsExporterConfig{}).Default()
+
 	flag.StringVar(&configFile, "config", "",
 		"The exporter will load its initial configuration from this file. "+
 			"Omit this flag to use the default configuration values. "+
 			"Command-line flags override configuration from this file.")
-	flag.StringVar(&logLevelFlag, "log-level", configDefaults.LogLevel,
+	flag.StringVar(&logLevelFlag, "log-level", defaults.LogLevel,
 		"Verbosity of log messages. Accepts go.uber.org/zap log levels.")
-	flag.IntVar(&timeoutFlag, "timeout", configDefaults.Timeout, "Timeout in seconds to serve metrics.")
+	flag.IntVar(&timeoutFlag, "timeout", defaults.Timeout, "Timeout in seconds to serve metrics.")
 	flag.Parse()
 
 	if len(configFile) > 0 {
@@ -71,7 +68,7 @@ func getConfigOrDie() (path string, cfg configondatv1.MetricsExporterConfig) {
 		}
 		cfg = *parsedCfg
 	} else {
-		cfg = *configDefaults.DeepCopy()
+		cfg = *defaults
 	}
 
 	// override defaults/configmap with the supplied flag values
