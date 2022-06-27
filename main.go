@@ -23,13 +23,14 @@ import (
 	"os"
 	"time"
 
-	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 )
 
 const (
@@ -72,9 +73,9 @@ func main() {
 	}
 	log.Debugf("Serve metrics timeout set to %d seconds", cfg.Timeout)
 
-	metricsCollectors := []Collector{
-		NewDiskStatsCollector(),
-		NewFileSystemCollector(),
+	metricsCollectors := GetEnabledMetricsCollectors(log, cfg.DisabledCollectors)
+	if len(metricsCollectors) == 0 {
+		log.Fatal("there is nothing to do with all metrics collectors disabled")
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()

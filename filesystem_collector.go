@@ -13,9 +13,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
+
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 )
 
-const FILE_SYSTEM_COLLECTOR_NAME = "filesystem"
+const FILE_SYSTEM_COLLECTOR_NAME = string(configondatv1.MetricsExporterCollectorFileSystem)
 
 var stuckMounts = make(map[string]struct{})
 var stuckMountsMtx = &sync.Mutex{}

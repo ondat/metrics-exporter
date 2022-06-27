@@ -6,3 +6,5 @@
 !go.mod
 !go.sum
 !index.html
+# ignore local GOPATH=$(pwd)/.go/
+.go/

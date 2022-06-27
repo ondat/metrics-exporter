@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+
+	configondatv1 "github.com/ondat/metrics-exporter/api/config.storageos.com/v1"
 )
 
 type Collector interface {
@@ -76,4 +78,34 @@ func execute(log *zap.SugaredLogger, c Collector, ch chan<- prometheus.Metric, o
 		success = 1
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessMetric.desc, scrapeSuccessMetric.valueType, success, c.Name())
+}
+
+func GetEnabledMetricsCollectors(
+	log *zap.SugaredLogger,
+	disabled []configondatv1.MetricsExporterCollector,
+) []Collector {
+	var metricsCollectors []Collector
+	for name, collectorFactory := range map[configondatv1.MetricsExporterCollector](func() Collector){
+		configondatv1.MetricsExporterCollectorDiskStats:  func() Collector { return NewDiskStatsCollector() },
+		configondatv1.MetricsExporterCollectorFileSystem: func() Collector { return NewFileSystemCollector() },
+	} {
+		if IsCollectorDisabled(disabled, name) {
+			log.Infof("disabling %s collector", name)
+			continue
+		}
+		metricsCollectors = append(metricsCollectors, collectorFactory())
+	}
+	return metricsCollectors
+}
+
+func IsCollectorDisabled(
+	disabled []configondatv1.MetricsExporterCollector,
+	collector configondatv1.MetricsExporterCollector,
+) bool {
+	for _, c := range disabled {
+		if c == collector {
+			return true
+		}
+	}
+	return false
 }
