@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: storageos-metrics-exporter
 spec:
+  selector:
+    app: storageos
+    app.kubernetes.io/component: metrics-exporter
   ports:
   - name: metrics
     port: 9100

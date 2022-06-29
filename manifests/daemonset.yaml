@@ -4,7 +4,15 @@ kind: DaemonSet
 metadata:
   name: storageos-metrics-exporter
 spec:
+  selector:
+    matchLabels:
+      app: storageos
+      app.kubernetes.io/component: metrics-exporter
   template:
+    metadata:
+      labels:
+        app: storageos
+        app.kubernetes.io/component: metrics-exporter
     spec:
       serviceAccountName: storageos-metrics-exporter
       containers:
