@@ -71,7 +71,6 @@ spec:
   selector:
     app: storageos
     app.kubernetes.io/component: metrics-exporter
-    category: metrics-exporter
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -91,7 +90,6 @@ spec:
       labels:
         app: storageos
         app.kubernetes.io/component: metrics-exporter
-        category: metrics-exporter
     spec:
       containers:
       - args:

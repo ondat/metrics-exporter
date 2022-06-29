@@ -4,14 +4,7 @@ kind: DaemonSet
 metadata:
   name: storageos-metrics-exporter
 spec:
-  selector:
-    matchLabels:
-      app: storageos
   template:
-    metadata:
-      labels:
-        app: storageos
-        category: metrics-exporter
     spec:
       serviceAccountName: storageos-metrics-exporter
       containers:
